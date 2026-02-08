@@ -1,23 +1,27 @@
 ---
-- name: Environment Setup
+# PLAY 1: Install the missing dependency for the runner
+- name: Bootstrap Environment
   hosts: localhost
   connection: local
   gather_facts: false
   tasks:
-    - name: Install netaddr to a writable location
+    - name: Install netaddr to user directory
       pip:
         name: netaddr
         extra_args: "--user"
 
-    - name: Get Python User Site path
-      command: python3 -m site --user-site
-      register: user_site
+    - name: Verify installation path
+      command: python3 -m pip show netaddr
+      register: pip_show
       changed_when: false
 
-- name: Launch Kubespray
+    - name: Display path for AWX configuration
+      debug:
+        msg: "Add this to your Job Template Environment field: {{ pip_show.stdout_lines[7] | default('Check pip show output') }}"
+
+# PLAY 2: Run the actual Kubespray deployment
+- name: Execute Kubespray
   import_playbook: playbooks/cluster.yml
   vars:
-    # This forces the Kubespray play to see the library you just installed
+    # Ensure we use the correct system python
     ansible_python_interpreter: /usr/bin/python3
-  environment:
-    PYTHONPATH: "{{ hostvars['localhost']['user_site']['stdout'] }}:{{ ansible_env.PYTHONPATH | default('') }}"
