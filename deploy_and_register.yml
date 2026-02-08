@@ -92,7 +92,7 @@
           # 1. Try 'externalKubernetes' instead of 'kubernetes'
             type: "externalKubernetes" 
             # 2. Use ID instead of name for Site
-            site:
+            cloud:
               id: 1 # <--- Find this ID in Infrastructure > Clouds URL
             # 3. Use ID instead of name for Layout
             layout:
@@ -103,6 +103,7 @@
             serviceUrl: "{{ k8s_api_host }}"
             serviceToken: "{{ sa_secret.resources[0].data.token | b64decode }}"
             apiProxy: { verifySsl: false }
+            enabled: true
         status_code: 201
         validate_certs: false
       delegate_to: localhost
