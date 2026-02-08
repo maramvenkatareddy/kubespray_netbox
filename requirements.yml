@@ -3,14 +3,18 @@ collections:
   - name: netbox.netbox
     version: "3.22.0"
   - name: community.general
-    version: "6.6.0"        # Use older version for Ansible 2.14
+    version: "6.6.0"
   - name: ansible.utils
-    version: "2.10.3"       # Use older version for Ansible 2.14
+    version: "2.10.3"
   - name: ansible.posix
-    version: "1.5.1"        # Use older version for Ansible 2.14
-  - name: ansible.netcommon  # ADD THIS - MISSING COLLECTION
-    version: "5.0.0"         # Compatible with Ansible 2.14
+    version: "1.5.1"
+  - name: ansible.netcommon
+    version: "5.0.0"
   - name: kubernetes.core
-    version: "2.4.0"        # Use older version for Ansible 2.14
+    version: "2.4.0"
   - name: community.crypto
     version: "2.0.0"
+
+# ADD THIS SECTION BELOW
+python:
+  - netaddr
