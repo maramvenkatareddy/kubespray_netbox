@@ -93,13 +93,13 @@
             type: "externalKubernetes" 
             # 2. Use ID instead of name for Site
             site:
-              name: "aws_cloud"# <--- Find this ID in Infrastructure > Clouds URL
+              id: 1 # <--- Find this ID in Infrastructure > Clouds URL
             # 3. Use ID instead of name for Layout
             layout:
               name: "Kubernetes Cluster" # <--- Find this ID in Library > Cluster Layouts URL
             # 4. Use ID for Group
             group:
-              name: "Default"  # <--- Find this ID in Infrastructure > Groups URL
+              id: 1  # <--- Find this ID in Infrastructure > Groups URL
             serviceUrl: "{{ k8s_api_host }}"
             serviceToken: "{{ sa_secret.resources[0].data.token | b64decode }}"
             apiProxy: { verifySsl: false }
