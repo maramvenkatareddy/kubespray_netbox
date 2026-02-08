@@ -100,8 +100,9 @@
             # 4. Use ID for Group
             group:
               id: 1  # <--- Find this ID in Infrastructure > Groups URL
-            sshKeyPair:
-              id: 72
+            server:
+              sshKeyPair:
+                id: 72
             serviceUrl: "{{ k8s_api_host }}"
             serviceToken: "{{ sa_secret.resources[0].data.token | b64decode }}"
             apiProxy: { verifySsl: false }
