@@ -1,0 +1,78 @@
+---
+# 1. Standard Kubespray Deployment
+- name: Deploy Kubernetes Cluster
+  import_playbook: playbooks/cluster.yml
+
+# 2. Your Custom Morpheus Registration
+- name: Register Cluster with Morpheus
+  hosts: kube_control_plane[0]
+  become: true
+  vars:
+    # It is best to pass these via AWX "Extra Vars" 
+    # or an AWX Encrypted Credential
+    morpheus_url: "https://98.85.233.250"
+    morpheus_api_token: "{{ vault_morpheus_token }}"
+    cluster_name: "K8s-{{ ansible_hostname }}"
+
+  tasks:
+    - name: Create Service Account for Morpheus
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: morpheus-admin
+            namespace: kube-system
+
+    - name: Grant cluster-admin permissions
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: morpheus-admin-binding
+          subjects:
+          - kind: ServiceAccount
+            name: morpheus-admin
+            namespace: kube-system
+          roleRef:
+            kind: ClusterRole
+            name: cluster-admin
+            apiGroup: rbac.authorization.k8s.io
+
+    - name: Create long-lived API token
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: morpheus-admin-token
+            namespace: kube-system
+            annotations:
+              kubernetes.io/service-account.name: morpheus-admin
+          type: kubernetes.io/service-account-token
+
+    - name: Retrieve token from cluster
+      kubernetes.core.k8s_info:
+        kind: Secret
+        name: morpheus-admin-token
+        namespace: kube-system
+      register: sa_secret
+
+    - name: Post Cluster Details to Morpheus API
+      uri:
+        url: "{{ morpheus_url }}/api/clusters"
+        method: POST
+        headers:
+          Authorization: "BEARER {{ morpheus_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          cluster:
+            name: "{{ cluster_name }}"
+            type: "kubernetes"
+            serviceUrl: "https://{{ ansible_host }}:6443"
+            serviceToken: "{{ sa_secret.resources[0].data.token | b64decode }}"
+            apiProxy: { verifySsl: false }
+        status_code: 201
+      delegate_to: localhost
