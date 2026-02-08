@@ -4,7 +4,7 @@
   vars:
     morpheus_url: "https://98.85.233.250"
     morpheus_api_token: "{{ morpheus_api_token }}"
-    cluster_name: "K8s-{{ ansible_hostname }}"
+    cluster_name: "prod-k8s"
     k8s_api_host: "https://{{ ansible_host }}:6443"
 
   tasks:
@@ -96,7 +96,7 @@
               id: 1 # <--- Find this ID in Infrastructure > Clouds URL
             # 3. Use ID instead of name for Layout
             layout:
-              name: "Kubernetes Cluster" # <--- Find this ID in Library > Cluster Layouts URL
+              name: "External Kubernetes 1.28" # <--- Find this ID in Library > Cluster Layouts URL
             # 4. Use ID for Group
             group:
               id: 1  # <--- Find this ID in Infrastructure > Groups URL
