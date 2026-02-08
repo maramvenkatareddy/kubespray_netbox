@@ -11,7 +11,7 @@
     # It is best to pass these via AWX "Extra Vars" 
     # or an AWX Encrypted Credential
     morpheus_url: "https://98.85.233.250"
-    morpheus_api_token: "{{ vault_morpheus_token }}"
+    morpheus_api_token: "{{ morpheus_api_token }}"
     cluster_name: "K8s-{{ ansible_hostname }}"
 
   tasks:
