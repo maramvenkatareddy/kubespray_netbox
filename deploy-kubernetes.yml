@@ -1,3 +1,14 @@
 ---
-- name: Deploy Kubernetes Cluster
+- name: Environment Setup
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Install netaddr to a writable location
+      pip:
+        name: netaddr
+        extra_args: "--user"
+      # This installs to the runner user's home dir which is usually writable
+
+- name: Launch Kubespray
   import_playbook: playbooks/cluster.yml
