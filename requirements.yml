@@ -1,15 +1,16 @@
+---
 collections:
-  - name: netbox.netbox      # For NetBox inventory
+  - name: netbox.netbox
     version: "3.22.0"
-  - name: community.general  # For Kubespray
-    version: "8.0.0"
+  - name: community.general
+    version: "6.6.0"        # Use older version for Ansible 2.14
   - name: ansible.utils
-    version: ">=2.10.3"
+    version: "2.10.3"       # Use older version for Ansible 2.14
   - name: ansible.posix
-    version: ">=1.5.4"
-  - name: ansible.utils
-    version: ">=4.1.0"
+    version: "1.5.1"        # Use older version for Ansible 2.14
+  - name: ansible.netcommon  # ADD THIS - MISSING COLLECTION
+    version: "5.0.0"         # Compatible with Ansible 2.14
   - name: kubernetes.core
-    version: ">=3.1.0"
+    version: "2.4.0"        # Use older version for Ansible 2.14
   - name: community.crypto
-    version: ">=2.0.0"
+    version: "2.0.0"
