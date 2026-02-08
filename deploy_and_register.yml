@@ -104,11 +104,11 @@
               sshKeyPair:
                 id: 72
             plan:
-              id: 5
+              id: 17
             servicePlan:
-              id: 5
+              id: 17
               plan:          # Add this
-                id: 5        # Use correct plan ID (e.g., default or custom)
+                id: 17        # Use correct plan ID (e.g., default or custom)
             serviceUrl: "{{ k8s_api_host }}"
             serviceToken: "{{ sa_secret.resources[0].data.token | b64decode }}"
             apiProxy: { verifySsl: false }
