@@ -8,7 +8,16 @@
       pip:
         name: netaddr
         extra_args: "--user"
-      # This installs to the runner user's home dir which is usually writable
+
+    - name: Get Python User Site path
+      command: python3 -m site --user-site
+      register: user_site
+      changed_when: false
 
 - name: Launch Kubespray
   import_playbook: playbooks/cluster.yml
+  vars:
+    # This forces the Kubespray play to see the library you just installed
+    ansible_python_interpreter: /usr/bin/python3
+  environment:
+    PYTHONPATH: "{{ hostvars['localhost']['user_site']['stdout'] }}:{{ ansible_env.PYTHONPATH | default('') }}"
