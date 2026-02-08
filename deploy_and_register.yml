@@ -100,11 +100,10 @@
             # 4. Use ID for Group
             group:
               id: 1  # <--- Find this ID in Infrastructure > Groups URL
-            server:
-              sshKeyPair:
-                id: 72
+            plan:
+              id: 5
             servicePlan:
-              id: 5  # "Discovered Instance" plan from your curl output
+              id: 5
             serviceUrl: "{{ k8s_api_host }}"
             serviceToken: "{{ sa_secret.resources[0].data.token | b64decode }}"
             apiProxy: { verifySsl: false }
