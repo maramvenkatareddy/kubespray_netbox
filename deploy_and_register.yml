@@ -90,6 +90,10 @@
           cluster:
             name: "{{ cluster_name }}"
             type: "kubernetes"
+            site:
+              name: "My VMware Cloud"   # <--- Change to your Cloud Name
+            layout:
+              name: "Kubernetes Cluster" # <--- Change to your Layout Name  
             serviceUrl: "{{ k8s_api_host }}"
             serviceToken: "{{ sa_secret.resources[0].data.token | b64decode }}"
             apiProxy: { verifySsl: false }
