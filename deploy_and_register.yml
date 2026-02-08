@@ -1,16 +1,14 @@
-# 2. Register the newly created cluster with Morpheus
 - name: 2. Register Cluster with Morpheus
   hosts: kube_control_plane[0]
-  become: true
+  become: true  # Necessary for the 'slurp' task on vm-1
   vars:
-    # IMPORTANT: Ensure these are set in AWX Extra Vars or Credentials
     morpheus_url: "https://98.85.233.250"
     morpheus_api_token: "{{ morpheus_api_token }}"
     cluster_name: "K8s-{{ ansible_hostname }}"
     k8s_api_host: "https://{{ ansible_host }}:6443"
 
   tasks:
-    - name: Read kubeconfig from vm-1 (The Master Node)
+    - name: Read kubeconfig from vm-1
       ansible.builtin.slurp:
         src: "/etc/kubernetes/admin.conf"
       register: remote_kubeconfig
@@ -27,8 +25,9 @@
             name: morpheus-admin
             namespace: kube-system
       delegate_to: localhost
+      become: false  # Don't use sudo on the AWX container
 
-    - name: Grant cluster-admin permissions to Service Account
+    - name: Grant cluster-admin permissions
       kubernetes.core.k8s:
         host: "{{ k8s_api_host }}"
         kubeconfig: "{{ remote_kubeconfig.content | b64decode | from_yaml }}"
@@ -47,6 +46,7 @@
             name: cluster-admin
             apiGroup: rbac.authorization.k8s.io
       delegate_to: localhost
+      become: false
 
     - name: Create long-lived API token secret
       kubernetes.core.k8s:
@@ -63,6 +63,7 @@
               kubernetes.io/service-account.name: morpheus-admin
           type: kubernetes.io/service-account-token
       delegate_to: localhost
+      become: false
 
     - name: Retrieve the Service Account token
       kubernetes.core.k8s_info:
@@ -74,6 +75,7 @@
         namespace: kube-system
       register: sa_secret
       delegate_to: localhost
+      become: false
       no_log: true
 
     - name: Post Cluster Details to Morpheus API
@@ -89,14 +91,15 @@
             name: "{{ cluster_name }}"
             type: "kubernetes"
             serviceUrl: "{{ k8s_api_host }}"
-            # Decode the base64 token from the secret
             serviceToken: "{{ sa_secret.resources[0].data.token | b64decode }}"
             apiProxy: { verifySsl: false }
         status_code: 201
       delegate_to: localhost
+      become: false
       register: morpheus_response
 
     - name: Success Message
       debug:
         msg: "Cluster successfully registered! Morpheus ID: {{ morpheus_response.json.cluster.id }}"
       when: morpheus_response.status == 201
+      become: false
