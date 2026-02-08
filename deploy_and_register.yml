@@ -90,7 +90,7 @@
           cluster:
             name: "{{ cluster_name }}"
           # 1. Try 'externalKubernetes' instead of 'kubernetes'
-            type: "externalKubernetes" 
+            type: "kubernetes" 
             # 2. Use ID instead of name for Site
             cloud:
               id: 1 # <--- Find this ID in Infrastructure > Clouds URL
