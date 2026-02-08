@@ -1,0 +1,34 @@
+plugin: netbox.netbox.nb_inventory
+
+# NetBox API configuration
+api_endpoint: http://98.85.233.250:30080/
+token: bas8fuQVQYV9opXK6qpaCgdleoajEJZDjhRTCQgF
+validate_certs: false
+
+# Query filters
+query_filters:
+  - tenant: test-tenant-1
+  - status: active
+
+# Compose variables for all hosts
+compose:
+  # Connection settings
+  ansible_host: primary_ip4.address | ipaddr('address')
+  ansible_user: ubuntu
+  ansible_connection: ssh
+  ansible_ssh_private_key_file: ~/.ssh/id_rsa
+  ansible_python_interpreter: /usr/bin/python3
+
+  # Optional: Add become settings if you need sudo
+  ansible_become: true
+  ansible_become_method: sudo
+  ansible_become_user: root
+
+# Create Kubespray groups
+groups:
+  kube_control_plane: "'k8s-master' in tags"
+  kube_node: "'k8s-worker' in tags"
+  etcd: "'k8s-master' in tags"
+  k8s_cluster: "'k8s-master' in tags or 'k8s-worker' in tags"
+
+fetch_all: false
