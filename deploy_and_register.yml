@@ -94,6 +94,7 @@
             serviceToken: "{{ sa_secret.resources[0].data.token | b64decode }}"
             apiProxy: { verifySsl: false }
         status_code: 201
+        validate_certs: false
       delegate_to: localhost
       become: false
       register: morpheus_response
