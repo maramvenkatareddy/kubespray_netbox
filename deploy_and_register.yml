@@ -103,7 +103,7 @@
             server:
               sshKeyPair:
                 id: 72
-            plan:
+            servicePlan:
               id: 5  # "Discovered Instance" plan from your curl output
             serviceUrl: "{{ k8s_api_host }}"
             serviceToken: "{{ sa_secret.resources[0].data.token | b64decode }}"
