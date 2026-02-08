@@ -1,21 +1,24 @@
-# 2. Your Custom Morpheus Registration
-- name: Register Cluster with Morpheus
+# 2. Register the newly created cluster with Morpheus
+- name: 2. Register Cluster with Morpheus
   hosts: kube_control_plane[0]
   become: true
   vars:
+    # IMPORTANT: Ensure these are set in AWX Extra Vars or Credentials
     morpheus_url: "https://98.85.233.250"
     morpheus_api_token: "{{ morpheus_api_token }}"
     cluster_name: "K8s-{{ ansible_hostname }}"
-    # Point the module to the API server on vm-1
     k8s_api_host: "https://{{ ansible_host }}:6443"
-    # Use the admin config created by Kubespray to authorize these local tasks
-    k8s_kubeconfig: "/etc/kubernetes/admin.conf"
 
   tasks:
+    - name: Read kubeconfig from vm-1 (The Master Node)
+      ansible.builtin.slurp:
+        src: "/etc/kubernetes/admin.conf"
+      register: remote_kubeconfig
+
     - name: Create Service Account for Morpheus
       kubernetes.core.k8s:
         host: "{{ k8s_api_host }}"
-        kubeconfig: "{{ k8s_kubeconfig }}"
+        kubeconfig: "{{ remote_kubeconfig.content | b64decode | from_yaml }}"
         validate_certs: false
         definition:
           apiVersion: v1
@@ -25,10 +28,10 @@
             namespace: kube-system
       delegate_to: localhost
 
-    - name: Grant cluster-admin permissions
+    - name: Grant cluster-admin permissions to Service Account
       kubernetes.core.k8s:
         host: "{{ k8s_api_host }}"
-        kubeconfig: "{{ k8s_kubeconfig }}"
+        kubeconfig: "{{ remote_kubeconfig.content | b64decode | from_yaml }}"
         validate_certs: false
         definition:
           apiVersion: rbac.authorization.k8s.io/v1
@@ -48,7 +51,7 @@
     - name: Create long-lived API token secret
       kubernetes.core.k8s:
         host: "{{ k8s_api_host }}"
-        kubeconfig: "{{ k8s_kubeconfig }}"
+        kubeconfig: "{{ remote_kubeconfig.content | b64decode | from_yaml }}"
         validate_certs: false
         definition:
           apiVersion: v1
@@ -61,16 +64,17 @@
           type: kubernetes.io/service-account-token
       delegate_to: localhost
 
-    - name: Retrieve token from cluster
+    - name: Retrieve the Service Account token
       kubernetes.core.k8s_info:
         host: "{{ k8s_api_host }}"
-        kubeconfig: "{{ k8s_kubeconfig }}"
+        kubeconfig: "{{ remote_kubeconfig.content | b64decode | from_yaml }}"
         validate_certs: false
         kind: Secret
         name: morpheus-admin-token
         namespace: kube-system
       register: sa_secret
       delegate_to: localhost
+      no_log: true
 
     - name: Post Cluster Details to Morpheus API
       uri:
@@ -85,8 +89,14 @@
             name: "{{ cluster_name }}"
             type: "kubernetes"
             serviceUrl: "{{ k8s_api_host }}"
-            # Decode the token retrieved in the previous step
+            # Decode the base64 token from the secret
             serviceToken: "{{ sa_secret.resources[0].data.token | b64decode }}"
             apiProxy: { verifySsl: false }
         status_code: 201
       delegate_to: localhost
+      register: morpheus_response
+
+    - name: Success Message
+      debug:
+        msg: "Cluster successfully registered! Morpheus ID: {{ morpheus_response.json.cluster.id }}"
+      when: morpheus_response.status == 201
