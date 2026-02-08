@@ -106,7 +106,6 @@
             plan:
               id: 5
             servicePlan:
-              plan:
                 id: 5
             serviceUrl: "{{ k8s_api_host }}"
             serviceToken: "{{ sa_secret.resources[0].data.token | b64decode }}"
