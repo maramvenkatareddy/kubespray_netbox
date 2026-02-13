@@ -157,14 +157,14 @@
         body:
           cluster:
             name: "sample-cluster-manually"
-            type: "external-kubernetes" # Prevents SSH check
+            type: "external-kubernetes-cluster" # Prevents SSH check
             site: { id: 1 }
             layout: { id: 159 }
-            #cloud: { id: 1 }
-            zone: { id: 1 }
+            cloud: { id: 1 }
+            #zone: { id: 1 }
           server: # This block is REQUIRED to fix the sshKeyPair error
             name: "sample-cluster-manually"
-            #plan: { code: "external-default" } 
+            plan: { code: "external-default" } 
             visibility: "private"
             config:
               apiUrl: "https://44.223.72.12:6443"
