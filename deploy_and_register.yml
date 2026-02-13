@@ -177,20 +177,26 @@
         body:
           cluster:
             name: "{{ cluster_name }}"
-            type: "external-kubernetes-cluster"
-            # Using the IDs identified from your URLs
+            # 1. Use the specific external type code
+            type: "external-kubernetes-cluster" 
+            # 2. Site is the API name for Group
             site:
               id: 1
+            # 3. Cloud association
             cloud:
               id: 1
+            # 4. Use the generic Layout (usually ID 4 in many Morpheus builds, or 610)
             layout:
-              id: 610  # Note: 610 is the standard ID for "External Kubernetes Cluster"
+              id: {{ morpheus_layout_id | default(4) }} 
+            # 5. Connection details
             serviceUrl: "{{ api_server_url.stdout }}"
             serviceToken: "{{ morpheus_sa_token }}"
             apiProxy:
               verifySsl: false
             config:
-              certificateAuthority: "{{ cluster_ca_cert }}"
+              # Passing this as an empty string or the actual CA 
+              # helps bypass the SSH key check on some Morpheus versions
+              certificateAuthority: "{{ cluster_ca_cert | default('') }}"
         validate_certs: false
         status_code: [200, 201]
       register: morpheus_response
