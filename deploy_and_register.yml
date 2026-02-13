@@ -51,7 +51,6 @@
         delay: 10
         timeout: 300
         state: started
-      delegate_to: localhost
 
     - name: Check if kubeconfig exists
       ansible.builtin.stat:
