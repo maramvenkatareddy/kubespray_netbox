@@ -183,7 +183,7 @@
                   "id": 1
                 },
                 "config": {
-                  "apiUrl": "{{ kube_apiurl }}",
+                  "apiUrl": "https://44.223.72.12:6443",
                   "apiToken": "{{ morpheus_sa_token }}",
                   "serviceAccess": "{{ kubeconfig }}"
                 },
