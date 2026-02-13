@@ -146,18 +146,14 @@
           - "Service Account: morpheus-admin"
           - "Token generated successfully ({{ morpheus_sa_token | length }} chars)"
     - name: Read kubeconfig file from control plane
-      ansible.builtin.slurp:
-        src: "/etc/kubernetes/admin.conf"
+      ansible.builtin.command: "cat /etc/kubernetes/admin.conf"
       register: kube_config_file
       changed_when: false
-    
-    - name: Decode kubeconfig
-      ansible.builtin.set_fact:
-        kubeconfig_decoded: "{{ kube_config_file.content | b64decode }}"  
+      
     - name: Set Morpheus and Kubernetes facts
       ansible.builtin.set_fact:
-        kubeconfig: "{{ kubeconfig_decoded }}"
-
+        kubeconfig: "{{ kube_config_file.stdout | regex_replace('\n', '')  }}"
+        
     - name: Create External kuberenets cluster
       ansible.builtin.uri:
         url: "{{ morpheus_url }}/api/clusters"
