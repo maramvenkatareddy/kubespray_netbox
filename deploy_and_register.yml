@@ -175,11 +175,11 @@
             name: "sample-cluster-manually"
             plan: { code: "external-default", "options": {} } 
             visibility: "private"
+            sshKeyPair: { id: 72 }
             config:
               apiUrl: "https://44.223.72.12:6443"
               apiToken: "{{ morpheus_sa_token }}"
               serviceAccess: "{{ kubeconfig }}"
-              sshKeyPair: { id: 72 }
         validate_certs: false
         status_code: [200, 201]
 
