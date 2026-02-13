@@ -7,8 +7,8 @@
 # ============================================================================
 
 # 1. Standard Kubespray Deployment
-- name: Deploy Kubernetes Cluster
-  import_playbook: cluster.yml
+#- name: Deploy Kubernetes Cluster
+#  import_playbook: cluster.yml
 
 # 2. Custom Morpheus Registration
 - name: Register Cluster with Morpheus
