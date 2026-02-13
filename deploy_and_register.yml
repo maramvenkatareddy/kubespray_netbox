@@ -23,7 +23,7 @@
   tasks:
 
     # --------------------------------------------------------
-    # 1. Read kubeconfig from control-plane node
+    # Read kubeconfig from control-plane
     # --------------------------------------------------------
     - name: Read kubeconfig from control plane
       slurp:
@@ -31,31 +31,43 @@
       register: kubeconfig_raw
 
     # --------------------------------------------------------
-    # 2. Fix localhost server endpoint if needed
+    # Parse kubeconfig YAML
     # --------------------------------------------------------
-    - name: Adjust kubeconfig server address
+    - name: Convert kubeconfig to YAML object
       set_fact:
-        fixed_kubeconfig: >-
+        kubeconfig_yaml: "{{ kubeconfig_raw.content | b64decode | from_yaml }}"
+
+    # --------------------------------------------------------
+    # Replace API server endpoint with real node IP
+    # --------------------------------------------------------
+    - name: Update API server endpoint
+      set_fact:
+        kubeconfig_yaml: >-
           {{
-            kubeconfig_raw.content | b64decode
-            | regex_replace('https://127.0.0.1:6443',
-                            'https://' ~ ansible_host ~ ':6443')
-            | regex_replace('https://localhost:6443',
-                            'https://' ~ ansible_host ~ ':6443')
+            kubeconfig_yaml | combine({
+              'clusters': [
+                kubeconfig_yaml.clusters[0] | combine({
+                  'cluster':
+                    kubeconfig_yaml.clusters[0].cluster | combine({
+                      'server': 'https://' ~ ansible_host ~ ':6443'
+                    })
+                })
+              ]
+            })
           }}
 
     # --------------------------------------------------------
-    # 3. Write kubeconfig inside AWX execution environment
+    # Write kubeconfig inside AWX execution environment
     # --------------------------------------------------------
-    - name: Write kubeconfig locally inside AWX
+    - name: Write kubeconfig locally
       copy:
-        content: "{{ fixed_kubeconfig }}"
+        content: "{{ kubeconfig_yaml | to_nice_yaml }}"
         dest: "{{ local_kubeconfig }}"
         mode: '0600'
       delegate_to: localhost
 
     # --------------------------------------------------------
-    # 4. Create Service Account
+    # Create Service Account
     # --------------------------------------------------------
     - name: Create Service Account for Morpheus
       kubernetes.core.k8s:
@@ -70,7 +82,7 @@
       delegate_to: localhost
 
     # --------------------------------------------------------
-    # 5. Create ClusterRoleBinding
+    # Create ClusterRoleBinding
     # --------------------------------------------------------
     - name: Grant cluster-admin permissions
       kubernetes.core.k8s:
@@ -92,9 +104,9 @@
       delegate_to: localhost
 
     # --------------------------------------------------------
-    # 6. Create Token Secret
+    # Create Token Secret
     # --------------------------------------------------------
-    - name: Create long-lived API token secret
+    - name: Create long-lived API token
       kubernetes.core.k8s:
         kubeconfig: "{{ local_kubeconfig }}"
         state: present
@@ -110,9 +122,9 @@
       delegate_to: localhost
 
     # --------------------------------------------------------
-    # 7. Retrieve Token
+    # Retrieve Token
     # --------------------------------------------------------
-    - name: Retrieve service account token
+    - name: Retrieve token from cluster
       kubernetes.core.k8s_info:
         kubeconfig: "{{ local_kubeconfig }}"
         kind: Secret
@@ -126,7 +138,7 @@
         morpheus_service_token: "{{ sa_secret.resources[0].data.token | b64decode }}"
 
     # --------------------------------------------------------
-    # 8. Register Cluster in Morpheus
+    # Register Cluster in Morpheus
     # --------------------------------------------------------
     - name: Post Cluster Details to Morpheus API
       uri:
