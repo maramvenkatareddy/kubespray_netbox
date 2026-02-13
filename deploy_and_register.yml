@@ -145,6 +145,26 @@
           - "Cluster API Server: {{ api_server_url.stdout }}"
           - "Service Account: morpheus-admin"
           - "Token generated successfully ({{ morpheus_sa_token | length }} chars)"
+    - name: Read kubeconfig file from control plane
+      ansible.builtin.slurp:
+        src: "/home/{{ ansible_user }}/.kube/config"
+      register: kube_config_file
+      changed_when: false
+    
+    - name: Decode kubeconfig
+      ansible.builtin.set_fact:
+        kubeconfig_decoded: "{{ kube_config_file.content | b64decode }}"
+    
+    - name: Extract Kubernetes API server from kubeconfig
+      ansible.builtin.set_fact:
+        kube_apiurl: "{{ (kubeconfig_decoded | from_yaml).clusters[0].cluster.server }}"
+    
+    - name: Set Morpheus and Kubernetes facts
+      ansible.builtin.set_fact:
+        morpheus_apiurl: "{{ morpheus_url.rstrip('/') }}/api/clusters"
+        kubeconfig: "{{ kubeconfig_decoded }}"
+        kube_api_token: "{{ kube_api_token_result.stdout | trim }}"
+
 
     - name: Register External Cluster
       ansible.builtin.uri:
@@ -156,16 +176,22 @@
         body_format: json
         body:
           cluster:
-            name: "{{ cluster_name }}"
-            enabled: true
-            site: { id: 1 }
-            layout: { id: 159 }  # This determines it's external Kubernetes
-            zone: { id: 1 }      # Changed from 'cloud' to 'zone'
-            serviceUrl: "{{ api_server_url.stdout }}"
-            serviceToken: "{{ morpheus_sa_token }}"
+            name: "sample-cluster-manually"
+            type: "external-kubernetes-cluster" # Prevents SSH check
+            group: { id: 1 }
+            layout: { id: 159 }
+            cloud: { id: 1 }
+            #zone: { id: 1 }
+          server: # This block is REQUIRED to fix the sshKeyPair error
+            name: "sample-cluster-manually"
+            plan: { code: "external-default", "options": {} } 
+            visibility: "private"
+            config:
+              apiUrl: "https://44.223.72.12:6443"
+              apiToken: "{{ morpheus_sa_token }}"
+              serviceAccess: "{{ kubeconfig }}"
         validate_certs: false
         status_code: [200, 201]
-      register: morpheus_response
 
     - name: Display Morpheus registration result
       ansible.builtin.debug:
