@@ -16,7 +16,7 @@
   become: true
   vars:
     morpheus_url: "{{ lookup('env', 'MORPHEUS_URL') | default('https://98.85.233.250', true) }}"
-    morpheus_api_token: "{{ lookup('env', 'MORPHEUS_API_TOKEN') | default(morpheus_api_token | default(''), true) }}"
+    morpheus_api_token: "{{ lookup('env', 'morpheus_api_token') | default(morpheus_api_token | default(''), true) }}"
     cluster_name: "{{ morpheus_cluster_name | default('K8s-' + ansible_hostname) }}"
     kubeconfig_path: "/etc/kubernetes/admin.conf"
     
@@ -31,18 +31,6 @@
           - "Cluster Name:    {{ cluster_name }}"
           - "Kubeconfig:      {{ kubeconfig_path }}"
           - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-    - name: Validate Morpheus API token
-      ansible.builtin.fail:
-        msg: |
-          ❌ ERROR: morpheus_api_token is required!
-          
-          Set it via:
-            export MORPHEUS_API_TOKEN="your-token"
-          
-          Or pass it with:
-            -e "morpheus_api_token=YOUR_TOKEN"
-      when: morpheus_api_token is not defined or morpheus_api_token | length == 0
 
     - name: Wait for Kubernetes API server to be ready
       ansible.builtin.wait_for:
