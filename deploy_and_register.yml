@@ -166,10 +166,10 @@
           cluster:
             name: "sample-cluster-manually"
             type: "external-kubernetes-cluster" # Prevents SSH check
-            group: { id: 1 }
-            layout: { id: 159 }
-            cloud: { id: 1 }
-            #sshKeyPair: { id: 72 }
+            group: { id: 1 | int }
+            layout: { id: 159 | int }
+            cloud: { id: 1 | int }
+            sshKeyPair: { id: 72 }
             #zone: { id: 1 }
           server: # This block is REQUIRED to fix the sshKeyPair error
             name: "sample-cluster-manually"
