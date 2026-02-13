@@ -178,10 +178,13 @@
           cluster:
             name: "{{ cluster_name }}"
             type: "external-kubernetes-cluster"
-            # Replace these with your actual IDs or variables from Morpheus/AWX
-            group: { id: "{{ morpheus_group_id | default(1) }}" }
-            cloud: { id: "{{ morpheus_cloud_id | default(1) }}" }
-            layout: { id: "{{ morpheus_layout_id | default(1) }}" }
+            # Using the IDs identified from your URLs
+            site:
+              id: 1
+            cloud:
+              id: 1
+            layout:
+              id: 610  # Note: 610 is the standard ID for "External Kubernetes Cluster"
             serviceUrl: "{{ api_server_url.stdout }}"
             serviceToken: "{{ morpheus_sa_token }}"
             apiProxy:
@@ -190,11 +193,10 @@
               certificateAuthority: "{{ cluster_ca_cert }}"
         validate_certs: false
         status_code: [200, 201]
-        timeout: 30
       register: morpheus_response
-      delegate_to: localhost  # Best practice for API calls
+      delegate_to: localhost
+      become: false 
       run_once: true
-      become: false
 
     - name: Display Morpheus registration result
       ansible.builtin.debug:
