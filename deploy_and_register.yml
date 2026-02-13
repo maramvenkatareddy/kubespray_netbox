@@ -184,6 +184,7 @@
                 serviceAccess: "{{ kubeconfig }}"
         validate_certs: false
         status_code: [200, 201]
+      register: morpheus_response
 
     - name: Display Morpheus registration result
       ansible.builtin.debug:
