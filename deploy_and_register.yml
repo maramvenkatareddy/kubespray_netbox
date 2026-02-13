@@ -1,93 +1,30 @@
 ---
-# ------------------------------------------------------------
 # 1. Standard Kubespray Deployment
-# ------------------------------------------------------------
 - name: Deploy Kubernetes Cluster
   import_playbook: playbooks/cluster.yml
 
-
-# ------------------------------------------------------------
-# 2. Register Cluster with Morpheus
-# ------------------------------------------------------------
+# 2. Custom Morpheus Registration
 - name: Register Cluster with Morpheus
   hosts: kube_control_plane[0]
   become: true
-  gather_facts: true
 
   vars:
     morpheus_url: "https://98.85.233.250"
     morpheus_api_token: "{{ morpheus_api_token }}"
     cluster_name: "K8s-{{ ansible_hostname }}"
-    local_kubeconfig: "/tmp/morpheus-kubeconfig"
 
   tasks:
-
-    # --------------------------------------------------------
-    # Read kubeconfig from control-plane
-    # --------------------------------------------------------
-    - name: Read kubeconfig from control plane
-      slurp:
-        src: /etc/kubernetes/admin.conf
-      register: kubeconfig_raw
-
-    # --------------------------------------------------------
-    # Parse kubeconfig YAML
-    # --------------------------------------------------------
-    - name: Convert kubeconfig to YAML object
-      set_fact:
-        kubeconfig_yaml: "{{ kubeconfig_raw.content | b64decode | from_yaml }}"
-
-    # --------------------------------------------------------
-    # Replace API server endpoint with real node IP
-    # --------------------------------------------------------
-    - name: Update API server endpoint
-      set_fact:
-        kubeconfig_yaml: >-
-          {{
-            kubeconfig_yaml | combine({
-              'clusters': [
-                kubeconfig_yaml.clusters[0] | combine({
-                  'cluster':
-                    kubeconfig_yaml.clusters[0].cluster | combine({
-                      'server': 'https://' ~ ansible_host ~ ':6443'
-                    })
-                })
-              ]
-            })
-          }}
-
-    # --------------------------------------------------------
-    # Write kubeconfig inside AWX execution environment
-    # --------------------------------------------------------
-    - name: Write kubeconfig locally
-      copy:
-        content: "{{ kubeconfig_yaml | to_nice_yaml }}"
-        dest: "{{ local_kubeconfig }}"
-        mode: '0600'
-      delegate_to: localhost
-
-    # --------------------------------------------------------
-    # Create Service Account
-    # --------------------------------------------------------
     - name: Create Service Account for Morpheus
       kubernetes.core.k8s:
-        kubeconfig: "{{ local_kubeconfig }}"
-        state: present
         definition:
           apiVersion: v1
           kind: ServiceAccount
           metadata:
             name: morpheus-admin
             namespace: kube-system
-      delegate_to: localhost
 
-    # --------------------------------------------------------
-    # Create ClusterRoleBinding
-    # --------------------------------------------------------
     - name: Grant cluster-admin permissions
       kubernetes.core.k8s:
-        kubeconfig: "{{ local_kubeconfig }}"
-        state: present
         definition:
           apiVersion: rbac.authorization.k8s.io/v1
           kind: ClusterRoleBinding
@@ -101,15 +38,9 @@
             kind: ClusterRole
             name: cluster-admin
             apiGroup: rbac.authorization.k8s.io
-      delegate_to: localhost
 
-    # --------------------------------------------------------
-    # Create Token Secret
-    # --------------------------------------------------------
     - name: Create long-lived API token
       kubernetes.core.k8s:
-        kubeconfig: "{{ local_kubeconfig }}"
-        state: present
         definition:
           apiVersion: v1
           kind: Secret
@@ -119,27 +50,14 @@
             annotations:
               kubernetes.io/service-account.name: morpheus-admin
           type: kubernetes.io/service-account-token
-      delegate_to: localhost
 
-    # --------------------------------------------------------
-    # Retrieve Token
-    # --------------------------------------------------------
     - name: Retrieve token from cluster
       kubernetes.core.k8s_info:
-        kubeconfig: "{{ local_kubeconfig }}"
         kind: Secret
         name: morpheus-admin-token
         namespace: kube-system
       register: sa_secret
-      delegate_to: localhost
 
-    - name: Decode service account token
-      set_fact:
-        morpheus_service_token: "{{ sa_secret.resources[0].data.token | b64decode }}"
-
-    # --------------------------------------------------------
-    # Register Cluster in Morpheus
-    # --------------------------------------------------------
     - name: Post Cluster Details to Morpheus API
       uri:
         url: "{{ morpheus_url }}/api/clusters"
@@ -151,11 +69,10 @@
         body:
           cluster:
             name: "{{ cluster_name }}"
-            type: "kubernetes"
+            type: kubernetes
             serviceUrl: "https://{{ ansible_host }}:6443"
-            serviceToken: "{{ morpheus_service_token }}"
+            serviceToken: "{{ sa_secret.resources[0].data.token | b64decode }}"
             apiProxy:
               verifySsl: false
         status_code: 201
-      delegate_to: localhost
       run_once: true
