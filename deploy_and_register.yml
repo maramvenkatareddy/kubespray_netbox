@@ -154,56 +154,6 @@
       ansible.builtin.set_fact:
         kubeconfig: "{{ kube_config_file.stdout | regex_replace('\n', '')  }}"
         
-    - name: Create External kuberenets cluster
-      ansible.builtin.uri:
-        url: "{{ morpheus_url }}/api/clusters"
-        method: post
-        body_format: json
-        body: |-
-          { 
-            "cluster": { 
-              "type": "external-kubernetes-cluster",
-              "group": {
-                "id": {{ 1 | int }}
-              },
-              "name": "sample-cluster-manually-3533",
-              "cloud": {
-                "id": {{ 1 | int }}
-              },
-              "layout": {
-                "id": {{ 159 | int }}
-              },
-            "server": {
-                "name": "sample-cluster-manually",
-                "sshKeyPair": {
-                  "id": 1
-                },
-                "config": {
-                  "apiUrl": "https://44.223.72.12:6443",
-                  "apiToken": "{{ morpheus_sa_token }}",
-                  "serviceAccess": "{{ kubeconfig }}"
-                },
-                "plan": {
-                  "code": "external-default",
-                  "options": {}
-                },
-                "visibility": "private",
-                "networkDomain": null
-              }
-            }
-          }
-        headers:
-          Content-Type: "application/json"
-          Authorization: "BEARER {{ morpheus_api_token }}"
-        return_content: true
-        validate_certs: false
-        status_code:
-          - 200
-          - 201
-        timeout: 30
-      register: morpheus_cluster_join
-
-
     - name: Register External Cluster
       ansible.builtin.uri:
         url: "{{ morpheus_url }}/api/clusters"
@@ -219,6 +169,7 @@
             group: { id: 1 }
             layout: { id: 159 }
             cloud: { id: 1 }
+            sshKeyPair: { id: 72 }
             #zone: { id: 1 }
           server: # This block is REQUIRED to fix the sshKeyPair error
             name: "sample-cluster-manually"
