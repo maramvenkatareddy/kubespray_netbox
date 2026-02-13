@@ -165,7 +165,7 @@
 
     - name: debug the cluster name
       debug:
-        var: existing_clusters.json
+        var: existing_clusters
         
     - name: Register External Cluster
       ansible.builtin.uri:
