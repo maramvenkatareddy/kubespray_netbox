@@ -1,9 +1,9 @@
 ---
 # ============================================================================
-# Kubespray + Morpheus Integration Playbook
+# Kubespray + Morpheus Integration Playbook (SIMPLE VERSION)
 # ============================================================================
 # Purpose: Deploy Kubernetes cluster and register with Morpheus
-# Usage: ansible-playbook morpheus-integration.yml -i inventory/hosts.yml
+# Usage: ansible-playbook deploy_and_register_simple.yml -i inventory/hosts.yml
 # ============================================================================
 
 # 1. Standard Kubespray Deployment
@@ -16,7 +16,7 @@
   become: true
   vars:
     morpheus_url: "{{ lookup('env', 'MORPHEUS_URL') | default('https://98.85.233.250', true) }}"
-    morpheus_api_token: "{{ lookup('env', 'MORPHEUS_API_TOKEN') | default(morpheus_api_token, true) }}"
+    morpheus_api_token: "{{ lookup('env', 'MORPHEUS_API_TOKEN') | default(morpheus_api_token | default(''), true) }}"
     cluster_name: "{{ morpheus_cluster_name | default('K8s-' + ansible_hostname) }}"
     kubeconfig_path: "/etc/kubernetes/admin.conf"
     
@@ -29,8 +29,20 @@
           - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           - "Morpheus URL:    {{ morpheus_url }}"
           - "Cluster Name:    {{ cluster_name }}"
-          - "API Server:      https://{{ ansible_host }}:6443"
+          - "Kubeconfig:      {{ kubeconfig_path }}"
           - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+    - name: Validate Morpheus API token
+      ansible.builtin.fail:
+        msg: |
+          ❌ ERROR: morpheus_api_token is required!
+          
+          Set it via:
+            export MORPHEUS_API_TOKEN="your-token"
+          
+          Or pass it with:
+            -e "morpheus_api_token=YOUR_TOKEN"
+      when: morpheus_api_token is not defined or morpheus_api_token | length == 0
 
     - name: Wait for Kubernetes API server to be ready
       ansible.builtin.wait_for:
@@ -40,12 +52,6 @@
         timeout: 300
         state: started
       delegate_to: localhost
-
-    - name: Verify kubectl is available
-      ansible.builtin.command: which kubectl
-      register: kubectl_check
-      changed_when: false
-      failed_when: kubectl_check.rc != 0
 
     - name: Check if kubeconfig exists
       ansible.builtin.stat:
@@ -114,7 +120,8 @@
 
     - name: Wait for token to be generated
       ansible.builtin.pause:
-        seconds: 10
+        seconds: 15
+        prompt: "Waiting for Kubernetes to generate service account token..."
 
     - name: Retrieve token from cluster
       ansible.builtin.shell: |
@@ -122,7 +129,7 @@
           -n kube-system -o jsonpath='{.data.token}'
       register: token_b64
       changed_when: false
-      retries: 5
+      retries: 10
       delay: 5
       until: token_b64.stdout | length > 0
 
@@ -141,16 +148,11 @@
       ansible.builtin.set_fact:
         cluster_ca_cert: "{{ ca_cert_b64.stdout | b64decode }}"
 
-    - name: Display token information (first 20 chars)
-      ansible.builtin.debug:
-        msg: "Service Account Token: {{ morpheus_sa_token[:20] }}..."
-
     - name: Verify token works
       ansible.builtin.shell: |
         kubectl --kubeconfig={{ kubeconfig_path }} --token="{{ morpheus_sa_token }}" get nodes
       register: token_verify
       changed_when: false
-      failed_when: token_verify.rc != 0
 
     - name: Get Kubernetes API server endpoint
       ansible.builtin.shell: |
@@ -163,8 +165,7 @@
         msg:
           - "Cluster API Server: {{ api_server_url.stdout }}"
           - "Service Account: morpheus-admin"
-          - "Namespace: kube-system"
-          - "Token generated successfully"
+          - "Token generated successfully ({{ morpheus_sa_token | length }} chars)"
 
     - name: Register cluster with Morpheus API
       ansible.builtin.uri:
@@ -224,55 +225,12 @@
           Namespace: kube-system
           
           # To manually verify:
-          kubectl --token="{{ morpheus_sa_token }}" get nodes
+          kubectl --token="{{ morpheus_sa_token }}" --server={{ api_server_url.stdout }} --insecure-skip-tls-verify get nodes
         dest: "/tmp/morpheus-cluster-{{ cluster_name }}.txt"
         mode: '0600'
       when: morpheus_response is succeeded
 
-  rescue:
-    - name: Display error information
+    - name: Display credentials file location
       ansible.builtin.debug:
-        msg:
-          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          - "  ❌ MORPHEUS REGISTRATION FAILED"
-          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          - "Error: {{ ansible_failed_result.msg | default('Unknown error') }}"
-          - ""
-          - "Troubleshooting steps:"
-          - "1. Verify Morpheus API is accessible: curl -k {{ morpheus_url }}/api/ping"
-          - "2. Check API token is valid"
-          - "3. Verify Kubernetes API server is running"
-          - "4. Check kubeconfig exists at {{ kubeconfig_path }}"
-          - "5. Verify network connectivity between nodes"
-          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-    - name: Fail with detailed error
-      ansible.builtin.fail:
-        msg: "Morpheus registration failed. See debug output above for details."
-
-- name: Post-Registration Verification
-  hosts: kube_control_plane[0]
-  become: true
-  vars:
-    kubeconfig_path: "/etc/kubernetes/admin.conf"
-  
-  tasks:
-    - name: Verify service account exists
-      ansible.builtin.shell: |
-        kubectl --kubeconfig={{ kubeconfig_path }} get sa morpheus-admin -n kube-system
-      register: sa_verify
-      changed_when: false
-      failed_when: false
-
-    - name: Verify cluster role binding exists
-      ansible.builtin.shell: |
-        kubectl --kubeconfig={{ kubeconfig_path }} get clusterrolebinding morpheus-admin-binding
-      register: crb_verify
-      changed_when: false
-      failed_when: false
-
-    - name: Display verification results
-      ansible.builtin.debug:
-        msg:
-          - "Service Account Status: {{ 'OK' if sa_verify.rc == 0 else 'MISSING' }}"
-          - "ClusterRoleBinding Status: {{ 'OK' if crb_verify.rc == 0 else 'MISSING' }}"
+        msg: "Credentials saved to: /tmp/morpheus-cluster-{{ cluster_name }}.txt"
+      when: morpheus_response is succeeded
