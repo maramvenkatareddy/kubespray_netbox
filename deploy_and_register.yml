@@ -156,7 +156,7 @@
         
     - name: Check if Cluster already exists
       ansible.builtin.uri:
-        url: "{{ morpheus_url }}/api/clusters?name={{ cluster_name }}"
+        url: "{{ morpheus_url }}/api/clusters?name=sample-cluster-manually"
         method: GET
         headers:
           Authorization: "Bearer {{ morpheus_api_token }}"
