@@ -169,7 +169,7 @@
             config:
               apiUrl: "https://44.223.72.12:6443"
               apiToken: "{{ morpheus_sa_token }}"
-             # serviceAccess: "{{ kubeconfig_path }}"
+              serviceAccess: "{{ kubeconfig_path }}"
         validate_certs: false
         status_code: [200, 201]
 
