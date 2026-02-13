@@ -147,24 +147,16 @@
           - "Token generated successfully ({{ morpheus_sa_token | length }} chars)"
     - name: Read kubeconfig file from control plane
       ansible.builtin.slurp:
-        src: "/home/{{ ansible_user }}/.kube/config"
+        src: "/etc/kubernetes/admin.conf"
       register: kube_config_file
       changed_when: false
     
     - name: Decode kubeconfig
       ansible.builtin.set_fact:
-        kubeconfig_decoded: "{{ kube_config_file.content | b64decode }}"
-    
-    - name: Extract Kubernetes API server from kubeconfig
-      ansible.builtin.set_fact:
-        kube_apiurl: "{{ (kubeconfig_decoded | from_yaml).clusters[0].cluster.server }}"
-    
+        kubeconfig_decoded: "{{ kube_config_file.content | b64decode }}"  
     - name: Set Morpheus and Kubernetes facts
       ansible.builtin.set_fact:
-        morpheus_apiurl: "{{ morpheus_url.rstrip('/') }}/api/clusters"
         kubeconfig: "{{ kubeconfig_decoded }}"
-        kube_api_token: "{{ kube_api_token_result.stdout | trim }}"
-
 
     - name: Register External Cluster
       ansible.builtin.uri:
