@@ -194,6 +194,7 @@
       register: morpheus_response
       delegate_to: localhost  # Best practice for API calls
       run_once: true
+      become: false
 
     - name: Display Morpheus registration result
       ansible.builtin.debug:
