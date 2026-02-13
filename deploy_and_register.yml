@@ -162,6 +162,10 @@
           Authorization: "Bearer {{ morpheus_api_token }}"
         validate_certs: false
       register: existing_clusters
+
+    - name: debug the cluster name
+      debug:
+        msg: {{ existing_clusters }}
         
     - name: Register External Cluster
       ansible.builtin.uri:
