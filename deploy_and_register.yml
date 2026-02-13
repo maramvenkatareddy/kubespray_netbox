@@ -169,7 +169,7 @@
             group: { id: 1 }
             layout: { id: 159 }
             cloud: { id: 1 }
-            sshKeyPair: { id: 72 }
+            #sshKeyPair: { id: 72 }
             #zone: { id: 1 }
           server: # This block is REQUIRED to fix the sshKeyPair error
             name: "sample-cluster-manually"
@@ -179,6 +179,7 @@
               apiUrl: "https://44.223.72.12:6443"
               apiToken: "{{ morpheus_sa_token }}"
               serviceAccess: "{{ kubeconfig }}"
+              sshKeyPair: { id: 72 }
         validate_certs: false
         status_code: [200, 201]
 
