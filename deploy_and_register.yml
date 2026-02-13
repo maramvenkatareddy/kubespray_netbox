@@ -1,85 +1,173 @@
-- name: 2. Register Cluster with Morpheus
-  hosts: kube_control_plane[0]
-  become: true  # Necessary for the 'slurp' task on vm-1
-  vars:
-    morpheus_url: "https://98.85.233.250"
-    morpheus_api_token: "{{ morpheus_api_token }}"
-    cluster_name: "prod-k8s"
-    k8s_api_host: "https://{{ ansible_host }}:6443"
+---
+# ============================================================================
+# Kubespray + Morpheus Integration Playbook
+# ============================================================================
+# Purpose: Deploy Kubernetes cluster and register with Morpheus
+# Usage: ansible-playbook morpheus-integration.yml -i inventory/hosts.yml
+# ============================================================================
 
+# 1. Standard Kubespray Deployment
+- name: Deploy Kubernetes Cluster
+  import_playbook: cluster.yml
+
+# 2. Custom Morpheus Registration
+- name: Register Cluster with Morpheus
+  hosts: kube_control_plane[0]
+  become: true
+  vars:
+    morpheus_url: "{{ lookup('env', 'MORPHEUS_URL') | default('https://98.85.233.250', true) }}"
+    morpheus_api_token: "{{ lookup('env', 'MORPHEUS_API_TOKEN') | default(morpheus_api_token, true) }}"
+    cluster_name: "{{ morpheus_cluster_name | default('K8s-' + ansible_hostname) }}"
+    kubeconfig_path: "/etc/kubernetes/admin.conf"
+    
   tasks:
-    - name: Read kubeconfig from vm-1
-      ansible.builtin.slurp:
-        src: "/etc/kubernetes/admin.conf"
-      register: remote_kubeconfig
+    - name: Display Morpheus Integration Information
+      ansible.builtin.debug:
+        msg:
+          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          - "  MORPHEUS CLUSTER REGISTRATION"
+          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          - "Morpheus URL:    {{ morpheus_url }}"
+          - "Cluster Name:    {{ cluster_name }}"
+          - "API Server:      https://{{ ansible_host }}:6443"
+          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+    - name: Wait for Kubernetes API server to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 6443
+        delay: 10
+        timeout: 300
+        state: started
+      delegate_to: localhost
+
+    - name: Verify kubectl is available
+      ansible.builtin.command: which kubectl
+      register: kubectl_check
+      changed_when: false
+      failed_when: kubectl_check.rc != 0
+
+    - name: Check if kubeconfig exists
+      ansible.builtin.stat:
+        path: "{{ kubeconfig_path }}"
+      register: kubeconfig_stat
+
+    - name: Fail if kubeconfig not found
+      ansible.builtin.fail:
+        msg: "Kubeconfig not found at {{ kubeconfig_path }}"
+      when: not kubeconfig_stat.stat.exists
+
+    - name: Verify cluster is accessible
+      ansible.builtin.command: >
+        kubectl --kubeconfig={{ kubeconfig_path }} get nodes
+      register: cluster_check
+      changed_when: false
+      retries: 10
+      delay: 30
+      until: cluster_check.rc == 0
 
     - name: Create Service Account for Morpheus
-      kubernetes.core.k8s:
-        host: "{{ k8s_api_host }}"
-        kubeconfig: "{{ remote_kubeconfig.content | b64decode | from_yaml }}"
-        validate_certs: false
-        definition:
-          apiVersion: v1
-          kind: ServiceAccount
-          metadata:
-            name: morpheus-admin
-            namespace: kube-system
-      delegate_to: localhost
-      become: false  # Don't use sudo on the AWX container
+      ansible.builtin.shell: |
+        kubectl --kubeconfig={{ kubeconfig_path }} apply -f - <<EOF
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: morpheus-admin
+          namespace: kube-system
+        EOF
+      register: sa_result
+      changed_when: "'created' in sa_result.stdout or 'configured' in sa_result.stdout"
 
     - name: Grant cluster-admin permissions
-      kubernetes.core.k8s:
-        host: "{{ k8s_api_host }}"
-        kubeconfig: "{{ remote_kubeconfig.content | b64decode | from_yaml }}"
-        validate_certs: false
-        definition:
-          apiVersion: rbac.authorization.k8s.io/v1
-          kind: ClusterRoleBinding
-          metadata:
-            name: morpheus-admin-binding
-          subjects:
+      ansible.builtin.shell: |
+        kubectl --kubeconfig={{ kubeconfig_path }} apply -f - <<EOF
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRoleBinding
+        metadata:
+          name: morpheus-admin-binding
+        subjects:
           - kind: ServiceAccount
             name: morpheus-admin
             namespace: kube-system
-          roleRef:
-            kind: ClusterRole
-            name: cluster-admin
-            apiGroup: rbac.authorization.k8s.io
-      delegate_to: localhost
-      become: false
+        roleRef:
+          kind: ClusterRole
+          name: cluster-admin
+          apiGroup: rbac.authorization.k8s.io
+        EOF
+      register: crb_result
+      changed_when: "'created' in crb_result.stdout or 'configured' in crb_result.stdout"
 
     - name: Create long-lived API token secret
-      kubernetes.core.k8s:
-        host: "{{ k8s_api_host }}"
-        kubeconfig: "{{ remote_kubeconfig.content | b64decode | from_yaml }}"
-        validate_certs: false
-        definition:
-          apiVersion: v1
-          kind: Secret
-          metadata:
-            name: morpheus-admin-token
-            namespace: kube-system
-            annotations:
-              kubernetes.io/service-account.name: morpheus-admin
-          type: kubernetes.io/service-account-token
-      delegate_to: localhost
-      become: false
-
-    - name: Retrieve the Service Account token
-      kubernetes.core.k8s_info:
-        host: "{{ k8s_api_host }}"
-        kubeconfig: "{{ remote_kubeconfig.content | b64decode | from_yaml }}"
-        validate_certs: false
+      ansible.builtin.shell: |
+        kubectl --kubeconfig={{ kubeconfig_path }} apply -f - <<EOF
+        apiVersion: v1
         kind: Secret
-        name: morpheus-admin-token
-        namespace: kube-system
-      register: sa_secret
-      delegate_to: localhost
-      become: false
-      no_log: true
+        metadata:
+          name: morpheus-admin-token
+          namespace: kube-system
+          annotations:
+            kubernetes.io/service-account.name: morpheus-admin
+        type: kubernetes.io/service-account-token
+        EOF
+      register: secret_result
+      changed_when: "'created' in secret_result.stdout or 'configured' in secret_result.stdout"
 
-    - name: Post Cluster Details to Morpheus API
-      uri:
+    - name: Wait for token to be generated
+      ansible.builtin.pause:
+        seconds: 10
+
+    - name: Retrieve token from cluster
+      ansible.builtin.shell: |
+        kubectl --kubeconfig={{ kubeconfig_path }} get secret morpheus-admin-token \
+          -n kube-system -o jsonpath='{.data.token}'
+      register: token_b64
+      changed_when: false
+      retries: 5
+      delay: 5
+      until: token_b64.stdout | length > 0
+
+    - name: Decode service account token
+      ansible.builtin.set_fact:
+        morpheus_sa_token: "{{ token_b64.stdout | b64decode }}"
+
+    - name: Get CA certificate
+      ansible.builtin.shell: |
+        kubectl --kubeconfig={{ kubeconfig_path }} get secret morpheus-admin-token \
+          -n kube-system -o jsonpath='{.data.ca\.crt}'
+      register: ca_cert_b64
+      changed_when: false
+
+    - name: Decode CA certificate
+      ansible.builtin.set_fact:
+        cluster_ca_cert: "{{ ca_cert_b64.stdout | b64decode }}"
+
+    - name: Display token information (first 20 chars)
+      ansible.builtin.debug:
+        msg: "Service Account Token: {{ morpheus_sa_token[:20] }}..."
+
+    - name: Verify token works
+      ansible.builtin.shell: |
+        kubectl --kubeconfig={{ kubeconfig_path }} --token="{{ morpheus_sa_token }}" get nodes
+      register: token_verify
+      changed_when: false
+      failed_when: token_verify.rc != 0
+
+    - name: Get Kubernetes API server endpoint
+      ansible.builtin.shell: |
+        kubectl --kubeconfig={{ kubeconfig_path }} config view --minify -o jsonpath='{.clusters[0].cluster.server}'
+      register: api_server_url
+      changed_when: false
+
+    - name: Display cluster information
+      ansible.builtin.debug:
+        msg:
+          - "Cluster API Server: {{ api_server_url.stdout }}"
+          - "Service Account: morpheus-admin"
+          - "Namespace: kube-system"
+          - "Token generated successfully"
+
+    - name: Register cluster with Morpheus API
+      ansible.builtin.uri:
         url: "{{ morpheus_url }}/api/clusters"
         method: POST
         headers:
@@ -89,38 +177,102 @@
         body:
           cluster:
             name: "{{ cluster_name }}"
-          # 1. Try 'externalKubernetes' instead of 'kubernetes'
-            type: "external-kubernetes-cluster" 
-            # 2. Use ID instead of name for Site
-            cloud:
-              id: 1 # <--- Find this ID in Infrastructure > Clouds URL
-            # 3. Use ID instead of name for Layout
-            layout:
-              name: "External Kubernetes 1.28" # <--- Find this ID in Library > Cluster Layouts URL
-            # 4. Use ID for Group
-            group:
-              id: 1  # <--- Find this ID in Infrastructure > Groups URL
-            server:
-              sshKeyPair:
-                id: 72
-            plan:
-              id: 17
-            servicePlan:
-              id: 17
-              plan:          # Add this
-                id: 17        # Use correct plan ID (e.g., default or custom)
-            serviceUrl: "{{ k8s_api_host }}"
-            serviceToken: "{{ sa_secret.resources[0].data.token | b64decode }}"
-            apiProxy: { verifySsl: false }
-            enabled: true
-        status_code: 201
+            description: "Kubernetes cluster managed by Kubespray"
+            type: "kubernetes"
+            serviceUrl: "{{ api_server_url.stdout }}"
+            serviceToken: "{{ morpheus_sa_token }}"
+            serviceVersion: "{{ kube_version | default('v1.28.5') }}"
+            apiProxy:
+              verifySsl: false
+            config:
+              certificateAuthority: "{{ cluster_ca_cert }}"
         validate_certs: false
-      delegate_to: localhost
-      become: false
+        status_code: 
+          - 200
+          - 201
+        timeout: 30
       register: morpheus_response
+      delegate_to: localhost
+      run_once: true
+      retries: 3
+      delay: 10
 
-    - name: Success Message
-      debug:
-        msg: "Cluster successfully registered! Morpheus ID: {{ morpheus_response.json.cluster.id }}"
-      when: morpheus_response.status == 201
-      become: false
+    - name: Display Morpheus registration result
+      ansible.builtin.debug:
+        msg:
+          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          - "  ✅ CLUSTER REGISTERED WITH MORPHEUS"
+          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          - "Cluster ID: {{ morpheus_response.json.cluster.id | default('N/A') }}"
+          - "Cluster Name: {{ cluster_name }}"
+          - "Status: {{ morpheus_response.json.cluster.status | default('Registered') }}"
+          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      when: morpheus_response is succeeded
+
+    - name: Save cluster credentials to file
+      ansible.builtin.copy:
+        content: |
+          # Morpheus Cluster Registration Details
+          # Generated: {{ ansible_date_time.iso8601 }}
+          
+          Cluster Name: {{ cluster_name }}
+          Morpheus URL: {{ morpheus_url }}
+          Cluster ID: {{ morpheus_response.json.cluster.id | default('N/A') }}
+          
+          API Server: {{ api_server_url.stdout }}
+          Service Account: morpheus-admin
+          Namespace: kube-system
+          
+          # To manually verify:
+          kubectl --token="{{ morpheus_sa_token }}" get nodes
+        dest: "/tmp/morpheus-cluster-{{ cluster_name }}.txt"
+        mode: '0600'
+      when: morpheus_response is succeeded
+
+  rescue:
+    - name: Display error information
+      ansible.builtin.debug:
+        msg:
+          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          - "  ❌ MORPHEUS REGISTRATION FAILED"
+          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          - "Error: {{ ansible_failed_result.msg | default('Unknown error') }}"
+          - ""
+          - "Troubleshooting steps:"
+          - "1. Verify Morpheus API is accessible: curl -k {{ morpheus_url }}/api/ping"
+          - "2. Check API token is valid"
+          - "3. Verify Kubernetes API server is running"
+          - "4. Check kubeconfig exists at {{ kubeconfig_path }}"
+          - "5. Verify network connectivity between nodes"
+          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+    - name: Fail with detailed error
+      ansible.builtin.fail:
+        msg: "Morpheus registration failed. See debug output above for details."
+
+- name: Post-Registration Verification
+  hosts: kube_control_plane[0]
+  become: true
+  vars:
+    kubeconfig_path: "/etc/kubernetes/admin.conf"
+  
+  tasks:
+    - name: Verify service account exists
+      ansible.builtin.shell: |
+        kubectl --kubeconfig={{ kubeconfig_path }} get sa morpheus-admin -n kube-system
+      register: sa_verify
+      changed_when: false
+      failed_when: false
+
+    - name: Verify cluster role binding exists
+      ansible.builtin.shell: |
+        kubectl --kubeconfig={{ kubeconfig_path }} get clusterrolebinding morpheus-admin-binding
+      register: crb_verify
+      changed_when: false
+      failed_when: false
+
+    - name: Display verification results
+      ansible.builtin.debug:
+        msg:
+          - "Service Account Status: {{ 'OK' if sa_verify.rc == 0 else 'MISSING' }}"
+          - "ClusterRoleBinding Status: {{ 'OK' if crb_verify.rc == 0 else 'MISSING' }}"
