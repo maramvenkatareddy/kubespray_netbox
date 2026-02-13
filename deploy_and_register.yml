@@ -192,7 +192,6 @@
           - 201
         timeout: 30
       register: morpheus_response
-      delegate_to: localhost
       run_once: true
       retries: 3
       delay: 10
