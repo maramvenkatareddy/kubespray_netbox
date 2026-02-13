@@ -32,14 +32,6 @@
           - "Kubeconfig:      {{ kubeconfig_path }}"
           - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-    - name: Wait for Kubernetes API server to be ready
-      ansible.builtin.wait_for:
-        host: "{{ ansible_host }}"
-        port: 6443
-        delay: 10
-        timeout: 300
-        state: started
-
     - name: Check if kubeconfig exists
       ansible.builtin.stat:
         path: "{{ kubeconfig_path }}"
