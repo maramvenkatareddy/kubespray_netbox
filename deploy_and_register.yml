@@ -178,23 +178,24 @@
           cluster:
             name: "{{ cluster_name }}"
             type: "external-kubernetes-cluster"
-            site:
-              id: "{{ morpheus_group_id | default(1) | int }}"
-            cloud:
-              id: "{{ morpheus_cloud_id | default(1) | int }}"
-            layout:
-              id: "{{ morpheus_layout_id | default(4) | int }}" # <--- QUOTES ADDED HERE
-            serviceUrl: "{{ api_server_url.stdout }}"
-            serviceToken: "{{ morpheus_sa_token }}"
-            apiProxy:
-              verifySsl: false
+            layout: { code: "external-kubernetes-cluster" } # Fixes 'Docker Cluster' mismatch
+            site: { id: 1 }
+          # The 'server' block below is the "Missing required parameter" fix
+          server:
+            name: "{{ cluster_name }}"
+            cloud: { id: 1 } # This fixes the Cloud validation error
+            plan: { code: "external-default" }
+            visibility: "private"
             config:
-              certificateAuthority: "{{ cluster_ca_cert | default('') }}"
+              apiUrl: "{{ api_server_url.stdout }}"
+              apiToken: "{{ morpheus_sa_token }}"
+              # Passing the cert here bypasses the sshKey check
+              serviceAccess: "{{ cluster_ca_cert | default('') }}"
         validate_certs: false
         status_code: [200, 201]
       register: morpheus_response
       delegate_to: localhost
-      become: false 
+      become: false
       run_once: true
 
     - name: Display Morpheus registration result
