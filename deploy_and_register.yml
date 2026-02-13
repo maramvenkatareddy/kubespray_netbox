@@ -166,6 +166,8 @@
             name: "sample-cluster-manually"
             plan: { code: "external-default" } 
             visibility: "private"
+            sshKeyPair:
+              name: "dummy-external-key"
             config:
               apiUrl: "https://44.223.72.12:6443"
               apiToken: "{{ morpheus_sa_token }}"
