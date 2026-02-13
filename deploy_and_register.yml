@@ -154,6 +154,14 @@
       ansible.builtin.set_fact:
         kubeconfig: "{{ kube_config_file.stdout | regex_replace('\n', '')  }}"
         
+    - name: Check if Cluster already exists
+      ansible.builtin.uri:
+        url: "{{ morpheus_url }}/api/clusters?name={{ cluster_name }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ morpheus_api_token }}"
+      register: existing_clusters
+        
     - name: Register External Cluster
       ansible.builtin.uri:
         url: "{{ morpheus_url }}/api/clusters"
@@ -184,6 +192,7 @@
                 serviceAccess: "{{ kubeconfig }}"
         validate_certs: false
         status_code: [200, 201]
+      when: existing_clusters.json.meta.total == 0
       register: morpheus_response
 
     - name: Display Morpheus registration result
