@@ -188,7 +188,7 @@
             config:
               apiUrl: "https://44.214.138.133:6443"
               apiToken: "{{ morpheus_sa_token }}"
-              serviceAccess: "{{ cluster_ca_cert }}"
+              serviceAccess: "{{ kubeconfig_path }}"
         validate_certs: false
         status_code: [200, 201]
 
