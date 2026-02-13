@@ -166,7 +166,7 @@
           - "Service Account: morpheus-admin"
           - "Token generated successfully ({{ morpheus_sa_token | length }} chars)"
 
-    - name: Register cluster with Morpheus API
+    - name: Register existing Kubespray cluster with Morpheus
       ansible.builtin.uri:
         url: "{{ morpheus_url }}/api/clusters"
         method: POST
@@ -176,27 +176,29 @@
         body_format: json
         body:
           cluster:
-            name: "{{ cluster_name }}"
+            name: "sample-cluster-manually"
             type: "external-kubernetes-cluster"
-            layout: { code: "external-kubernetes-cluster" } # Fixes 'Docker Cluster' mismatch
-            site: { id: 1 }
-          # The 'server' block below is the "Missing required parameter" fix
+            site: 
+              id: 1
+            cloud: 
+              id: 15
+            layout: 
+              id: 219
           server:
-            name: "{{ cluster_name }}"
-            cloud: { id: 1 } # This fixes the Cloud validation error
-            plan: { code: "external-default" }
+            name: "sample-cluster-manually"
             visibility: "private"
+            plan: 
+              code: "external-default"
             config:
+              # Use the Public IP where the K8s API is listening
               apiUrl: "https://44.214.138.133:6443"
+              # This is the token from: kubectl get secret morpheus-admin-token
               apiToken: "{{ morpheus_sa_token }}"
-              # Passing the cert here bypasses the sshKey check
-              serviceAccess: "{{ cluster_ca_cert | default('') }}"
+              # The CA cert from your kubeconfig
+              serviceAccess: "{{ cluster_ca_cert }}"
         validate_certs: false
         status_code: [200, 201]
       register: morpheus_response
-      delegate_to: localhost
-      become: false
-      run_once: true
 
     - name: Display Morpheus registration result
       ansible.builtin.debug:
