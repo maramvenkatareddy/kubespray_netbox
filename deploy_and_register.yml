@@ -184,6 +184,7 @@
                 serviceAccess: "{{ kubeconfig }}"
         validate_certs: false
         status_code: [200, 201]
+      when: existing_clusters.json.meta.total == 0
       register: morpheus_response
 
     - name: Display Morpheus registration result
