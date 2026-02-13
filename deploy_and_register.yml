@@ -171,17 +171,17 @@
             cloud: { id: 1 }
             sshKeyPair: { id: 72 }
             #zone: { id: 1 }
-          server: # This block is REQUIRED to fix the sshKeyPair error
-            name: "sample-cluster-manually"
-            plan: 
-              code: "external-default" 
-              options: {}
-            visibility: "private"
-            networkDomain: null
-            config:
-              apiUrl: "https://44.223.72.12:6443"
-              apiToken: "{{ morpheus_sa_token }}"
-              serviceAccess: "{{ kubeconfig }}"
+            server: # This block is REQUIRED to fix the sshKeyPair error
+              name: "sample-cluster-manually"
+              plan: 
+                code: "external-default" 
+                options: {}
+              visibility: "private"
+              networkDomain: null
+              config:
+                apiUrl: "https://44.223.72.12:6443"
+                apiToken: "{{ morpheus_sa_token }}"
+                serviceAccess: "{{ kubeconfig }}"
         validate_certs: false
         status_code: [200, 201]
 
