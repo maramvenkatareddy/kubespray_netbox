@@ -166,7 +166,7 @@
               "group": {
                 "id": {{ 1 | int }}
               },
-              "name": "sample-cluster-manually",
+              "name": "sample-cluster-manually-3533",
               "cloud": {
                 "id": {{ 1 | int }}
               },
