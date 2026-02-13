@@ -177,24 +177,23 @@
         body:
           cluster:
             name: "{{ cluster_name }}"
-            description: "Kubernetes cluster managed by Kubespray"
-            type: "kubernetes"
+            type: "external-kubernetes-cluster"
+            # Replace these with your actual IDs or variables from Morpheus/AWX
+            group: { id: "{{ morpheus_group_id | default(1) }}" }
+            cloud: { id: "{{ morpheus_cloud_id | default(1) }}" }
+            layout: { id: "{{ morpheus_layout_id | default(1) }}" }
             serviceUrl: "{{ api_server_url.stdout }}"
             serviceToken: "{{ morpheus_sa_token }}"
-            serviceVersion: "{{ kube_version | default('v1.28.5') }}"
             apiProxy:
               verifySsl: false
             config:
               certificateAuthority: "{{ cluster_ca_cert }}"
         validate_certs: false
-        status_code: 
-          - 200
-          - 201
+        status_code: [200, 201]
         timeout: 30
       register: morpheus_response
+      delegate_to: localhost  # Best practice for API calls
       run_once: true
-      retries: 3
-      delay: 10
 
     - name: Display Morpheus registration result
       ansible.builtin.debug:
