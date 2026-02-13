@@ -177,7 +177,7 @@
               "layout": {
                 "id": {{ 159 | int }}
               },
-              "server": {
+            "server": {
                 "name": "sample-cluster-manually",
                 "sshKeyPair": {
                   "id": 1
