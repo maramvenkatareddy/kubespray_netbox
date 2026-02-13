@@ -159,8 +159,8 @@
             name: "sample-cluster-manually"
             type: "external-kubernetes-cluster" # Prevents SSH check
             site: { id: 1 }
-            layout: { id: 219 }
-            cloud: { id: 15 }
+            layout: { id: 159 }
+            cloud: { id: 1 }
           server: # This block is REQUIRED to fix the sshKeyPair error
             name: "sample-cluster-manually"
             plan: { code: "external-default" } 
