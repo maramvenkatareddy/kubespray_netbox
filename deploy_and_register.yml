@@ -1,5 +1,18 @@
 ---
 
+---
+# STEP 1: Capture the Morpheus variables and force them into Global Memory
+- name: Capture Morpheus Variables
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Force Morpheus variables into Global Facts
+      ansible.builtin.set_fact:
+        # We use 'true' inside the default to catch empty strings from Morpheus
+        kube_version: "{{ morpheus['customOptions']['kube_version'] | default('v1.30.0', true) }}"
+        cluster_name: "{{ morpheus['customOptions']['cluster_name'] | default('my-cluster', true) }}"
+      run_once: true
+
 # 1. Prepare Environment - Install Python dependencies
 - name: Prepare Python Environment
   hosts: kube_control_plane[0]
@@ -69,8 +82,6 @@
 # 1. Standard Kubespray Deployment
 - import_playbook: cluster.yml
   become: yes
-  vars:
-    kube_version: "{{ morpheus['customOptions']['kube_version'] | default('v1.31.0') }}"
 
 # 2. Custom Morpheus Registration
 - name: Register Cluster with Morpheus
