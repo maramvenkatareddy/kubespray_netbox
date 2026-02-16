@@ -7,8 +7,10 @@
 # ============================================================================
 
 # 1. Standard Kubespray Deployment
-#- name: Deploy Kubernetes Cluster
-#  import_playbook: cluster.yml
+- import_playbook: cluster.yml
+  become: yes
+  vars:
+    kube_version: "{{ morpheus['customOptions']['kube_version'] | default('v1.31.0') }}"
 
 # 2. Custom Morpheus Registration
 - name: Register Cluster with Morpheus
