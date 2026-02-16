@@ -8,7 +8,7 @@
     - name: Force Morpheus variables into Global Facts
       ansible.builtin.set_fact:
         # We use 'true' inside the default to catch empty strings from Morpheus
-        kube_version: "{{ morpheus['customOptions']['kube_version'] | default('v1.30.0', true) }}"
+        kube_version: "{{ customOptions.kube_version | default('v1.30.0', true) }}"
         cluster_name: "{{ morpheus['customOptions']['cluster_name'] | default('my-cluster', true) }}"
     - name: Verify variables are now visible on this node
       ansible.builtin.debug:
