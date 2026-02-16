@@ -19,7 +19,7 @@
   vars:
     morpheus_url: "{{ lookup('env', 'MORPHEUS_URL') | default('https://98.85.233.250', true) }}"
     morpheus_api_token: "{{ lookup('env', 'morpheus_api_token') | default(morpheus_api_token | default(''), true) }}"
-    cluster_name: "{{ morpheus_cluster_name | default('K8s-' + ansible_hostname) }}"
+    cluster_name: "{{ morpheus['customOptions']['cluster_name'] | default('sample-test-cluster') }}"
     kubeconfig_path: "/etc/kubernetes/admin.conf"
     
   tasks:
