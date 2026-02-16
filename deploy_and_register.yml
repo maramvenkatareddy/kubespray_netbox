@@ -1,7 +1,8 @@
 ---
 # STEP 1: Capture the Morpheus variables and force them into Global Memory
 - name: Capture Morpheus Variables
-  hosts: all
+  hosts: localhost
+  connection: local
   gather_facts: false
   tasks:
     - name: Force Morpheus variables into Global Facts
@@ -9,9 +10,6 @@
         # We use 'true' inside the default to catch empty strings from Morpheus
         kube_version: "{{ morpheus['customOptions']['kube_version'] | default('v1.30.0', true) }}"
         cluster_name: "{{ morpheus['customOptions']['cluster_name'] | default('my-cluster', true) }}"
-      delegate_to: localhost
-      delegate_facts: true
-      run_once: true
     - name: Verify variables are now visible on this node
       ansible.builtin.debug:
         msg: "This node now sees kube_version as: {{ kube_version }}"
