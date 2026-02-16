@@ -9,7 +9,10 @@
         # We use 'true' inside the default to catch empty strings from Morpheus
         kube_version: "{{ morpheus['customOptions']['kube_version'] | default('v1.30.0', true) }}"
         cluster_name: "{{ morpheus['customOptions']['cluster_name'] | default('my-cluster', true) }}"
-      run_once: true
+    - name: Show customOptions
+      debug:
+        var: morpheus.customOptions
+      
 
 # 1. Prepare Environment - Install Python dependencies
 - name: Prepare Python Environment
