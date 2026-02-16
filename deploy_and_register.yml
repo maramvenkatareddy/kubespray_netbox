@@ -35,10 +35,18 @@
         state: latest
         virtualenv: /opt/ansible-venv
 
-    - name: Install required Python packages in virtual environment
+    - name: Find requirements file
+      ansible.builtin.find:
+        paths: /runner/project
+        patterns: "requirements.yml"
+        recurse: yes
+      register: found_reqs
+
+    - name: Install from found path
       ansible.builtin.pip:
-        requirements: "{{ playbook_dir }}/requirements.txt"
+        requirements: "{{ found_reqs.files[0].path }}"
         virtualenv: /opt/ansible-venv
+      when: found_reqs.matched > 0
 
     - name: Display Python environment info
       ansible.builtin.debug:
