@@ -1,4 +1,56 @@
 ---
+
+# 1. Prepare Environment - Install Python dependencies
+- name: Prepare Python Environment
+  hosts: kube_control_plane[0]
+  become: true
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install Python, pip, and venv
+      ansible.builtin.apt:
+        name:
+          - python3
+          - python3-pip
+          - python3-venv
+        state: present
+
+    - name: Create virtual environment directory
+      ansible.builtin.file:
+        path: /opt/ansible-venv
+        state: directory
+        mode: '0755'
+
+    - name: Create Python virtual environment
+      ansible.builtin.command:
+        cmd: python3 -m venv /opt/ansible-venv
+        creates: /opt/ansible-venv/bin/activate
+
+    - name: Upgrade pip in virtual environment
+      ansible.builtin.pip:
+        name: pip
+        state: latest
+        virtualenv: /opt/ansible-venv
+
+    - name: Install required Python packages in virtual environment
+      ansible.builtin.pip:
+        requirements: "{{ playbook_dir }}/requirements.txt"
+        virtualenv: /opt/ansible-venv
+
+    - name: Display Python environment info
+      ansible.builtin.debug:
+        msg:
+          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          - "  ✅ PYTHON ENVIRONMENT READY"
+          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          - "Virtual Environment: /opt/ansible-venv"
+          - "Python packages: ansible, kubernetes, requests"
+          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+
 # ============================================================================
 # Kubespray + Morpheus Integration Playbook (SIMPLE VERSION)
 # ============================================================================
