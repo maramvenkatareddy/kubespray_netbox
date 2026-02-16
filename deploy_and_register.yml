@@ -1,6 +1,4 @@
 ---
-
----
 # STEP 1: Capture the Morpheus variables and force them into Global Memory
 - name: Capture Morpheus Variables
   hosts: all
