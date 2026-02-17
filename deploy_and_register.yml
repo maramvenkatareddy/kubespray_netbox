@@ -53,18 +53,34 @@
         state: latest
         virtualenv: /opt/ansible-venv
 
-    - name: Find requirements file
+# 1. Handle Python Packages
+    - name: Find Python requirements.txt
+      ansible.builtin.find:
+        paths: /runner/project
+        patterns: "requirements.txt"
+        recurse: yes
+      register: found_python_reqs
+
+    - name: Install Python packages via pip
+      ansible.builtin.pip:
+        requirements: "{{ item.path }}"
+        virtualenv: /opt/ansible-venv
+      loop: "{{ found_python_reqs.files }}"
+      when: found_python_reqs.matched > 0
+
+    # 2. Handle Ansible Collections/Roles
+    - name: Find Ansible requirements.yml
       ansible.builtin.find:
         paths: /runner/project
         patterns: "requirements.yml"
         recurse: yes
-      register: found_reqs
+      register: found_ansible_reqs
 
-    - name: Install from found path
-      ansible.builtin.pip:
-        requirements: "{{ found_reqs.files[0].path }}"
-        virtualenv: /opt/ansible-venv
-      when: found_reqs.matched > 0
+    - name: Install Ansible Galaxy dependencies
+      ansible.builtin.command:
+        cmd: "ansible-galaxy install -r {{ item.path }}"
+      loop: "{{ found_ansible_reqs.files }}"
+      when: found_ansible_reqs.matched > 0
 
     - name: Display Python environment info
       ansible.builtin.debug:
