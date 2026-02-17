@@ -13,6 +13,9 @@
     - name: Verify variables are now visible on this node
       ansible.builtin.debug:
         msg: "This node now sees kube_version as: {{ hostvars['localhost']['kube_version'] }} & {{ hostvars['localhost']['cluster_name'] }}"
+    - name: Debug all Morpheus variables
+      ansible.builtin.debug:
+        var: morpheus
       
 
 # # 1. Prepare Environment - Install Python dependencies
