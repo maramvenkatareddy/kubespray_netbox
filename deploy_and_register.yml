@@ -12,7 +12,7 @@
         cluster_name: "{{ morpheus.customOptions.cluster_name | default('my-cluster', true) }}"
     - name: Verify variables are now visible on this node
       ansible.builtin.debug:
-        msg: "This node now sees kube_version as: {{ kube_version }} & {{ cluster_name }}"
+        msg: "This node now sees kube_version as: {{ hostvars['localhost']['kube_version'] }} & {{ hostvars['localhost']['cluster_name'] }}"
       
 
 # # 1. Prepare Environment - Install Python dependencies
