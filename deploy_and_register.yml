@@ -103,6 +103,8 @@
 
 # 1. Standard Kubespray Deployment
 - import_playbook: playbooks/cluster.yml
+  vars:
+    kube_version: "{{morpheus.customOptions.kube_version | default('v1.30.0', true) }}"
   become: yes
 
 # 2. Custom Morpheus Registration
