@@ -102,7 +102,7 @@
 # ============================================================================
 
 # 1. Standard Kubespray Deployment
-- import_playbook: cluster.yml
+- import_playbook: playbooks/cluster.yml
   become: yes
 
 # 2. Custom Morpheus Registration
