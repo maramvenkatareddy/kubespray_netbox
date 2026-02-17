@@ -1,5 +1,5 @@
----
-# STEP 1: Capture the Morpheus variables and force them into Global Memory
+# ---
+# # STEP 1: Capture the Morpheus variables and force them into Global Memory
 - name: Capture Morpheus Variables
   hosts: localhost
   connection: local
@@ -15,299 +15,299 @@
         msg: "This node now sees kube_version as: {{ kube_version }}"
       
 
-# 1. Prepare Environment - Install Python dependencies
-- name: Prepare Python Environment
-  hosts: kube_control_plane[0]
-  become: true
-  tasks:
-    - name: Update apt cache
-      ansible.builtin.apt:
-        update_cache: yes
-        cache_valid_time: 3600
+# # 1. Prepare Environment - Install Python dependencies
+# - name: Prepare Python Environment
+#   hosts: kube_control_plane[0]
+#   become: true
+#   tasks:
+#     - name: Update apt cache
+#       ansible.builtin.apt:
+#         update_cache: yes
+#         cache_valid_time: 3600
 
-    - name: Install Python, pip, and venv
-      ansible.builtin.apt:
-        name:
-          - python3
-          - python3-pip
-          - python3-venv
-        state: present
+#     - name: Install Python, pip, and venv
+#       ansible.builtin.apt:
+#         name:
+#           - python3
+#           - python3-pip
+#           - python3-venv
+#         state: present
 
-    - name: Create virtual environment directory
-      ansible.builtin.file:
-        path: /opt/ansible-venv
-        state: directory
-        mode: '0755'
+#     - name: Create virtual environment directory
+#       ansible.builtin.file:
+#         path: /opt/ansible-venv
+#         state: directory
+#         mode: '0755'
 
-    - name: Create Python virtual environment
-      ansible.builtin.command:
-        cmd: python3 -m venv /opt/ansible-venv
-        creates: /opt/ansible-venv/bin/activate
+#     - name: Create Python virtual environment
+#       ansible.builtin.command:
+#         cmd: python3 -m venv /opt/ansible-venv
+#         creates: /opt/ansible-venv/bin/activate
 
-    - name: Upgrade pip in virtual environment
-      ansible.builtin.pip:
-        name: pip
-        state: latest
-        virtualenv: /opt/ansible-venv
+#     - name: Upgrade pip in virtual environment
+#       ansible.builtin.pip:
+#         name: pip
+#         state: latest
+#         virtualenv: /opt/ansible-venv
 
-    - name: Find requirements file
-      ansible.builtin.find:
-        paths: /runner/project
-        patterns: "requirements.yml"
-        recurse: yes
-      register: found_reqs
+#     - name: Find requirements file
+#       ansible.builtin.find:
+#         paths: /runner/project
+#         patterns: "requirements.yml"
+#         recurse: yes
+#       register: found_reqs
 
-    - name: Install from found path
-      ansible.builtin.pip:
-        requirements: "{{ found_reqs.files[0].path }}"
-        virtualenv: /opt/ansible-venv
-      when: found_reqs.matched > 0
+#     - name: Install from found path
+#       ansible.builtin.pip:
+#         requirements: "{{ found_reqs.files[0].path }}"
+#         virtualenv: /opt/ansible-venv
+#       when: found_reqs.matched > 0
 
-    - name: Display Python environment info
-      ansible.builtin.debug:
-        msg:
-          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          - "  ✅ PYTHON ENVIRONMENT READY"
-          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          - "Virtual Environment: /opt/ansible-venv"
-          - "Python packages: ansible, kubernetes, requests"
-          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+#     - name: Display Python environment info
+#       ansible.builtin.debug:
+#         msg:
+#           - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+#           - "  ✅ PYTHON ENVIRONMENT READY"
+#           - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+#           - "Virtual Environment: /opt/ansible-venv"
+#           - "Python packages: ansible, kubernetes, requests"
+#           - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 
-# ============================================================================
-# Kubespray + Morpheus Integration Playbook (SIMPLE VERSION)
-# ============================================================================
-# Purpose: Deploy Kubernetes cluster and register with Morpheus
-# Usage: ansible-playbook deploy_and_register_simple.yml -i inventory/hosts.yml
-# ============================================================================
+# # ============================================================================
+# # Kubespray + Morpheus Integration Playbook (SIMPLE VERSION)
+# # ============================================================================
+# # Purpose: Deploy Kubernetes cluster and register with Morpheus
+# # Usage: ansible-playbook deploy_and_register_simple.yml -i inventory/hosts.yml
+# # ============================================================================
 
-# 1. Standard Kubespray Deployment
-- import_playbook: cluster.yml
-  become: yes
+# # 1. Standard Kubespray Deployment
+# - import_playbook: cluster.yml
+#   become: yes
 
-# 2. Custom Morpheus Registration
-- name: Register Cluster with Morpheus
-  hosts: kube_control_plane[0]
-  become: true
-  vars:
-    morpheus_url: "{{ lookup('env', 'MORPHEUS_URL') | default('https://98.85.233.250', true) }}"
-    morpheus_api_token: "{{ lookup('env', 'morpheus_api_token') | default(morpheus_api_token | default(''), true) }}"
-    cluster_name: "{{ morpheus['customOptions']['cluster_name'] | default('sample-test-cluster') }}"
-    kubeconfig_path: "/etc/kubernetes/admin.conf"
+# # 2. Custom Morpheus Registration
+# - name: Register Cluster with Morpheus
+#   hosts: kube_control_plane[0]
+#   become: true
+#   vars:
+#     morpheus_url: "{{ lookup('env', 'MORPHEUS_URL') | default('https://98.85.233.250', true) }}"
+#     morpheus_api_token: "{{ lookup('env', 'morpheus_api_token') | default(morpheus_api_token | default(''), true) }}"
+#     cluster_name: "{{ morpheus['customOptions']['cluster_name'] | default('sample-test-cluster') }}"
+#     kubeconfig_path: "/etc/kubernetes/admin.conf"
     
-  tasks:
-    - name: Display Morpheus Integration Information
-      ansible.builtin.debug:
-        msg:
-          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          - "  MORPHEUS CLUSTER REGISTRATION"
-          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          - "Morpheus URL:    {{ morpheus_url }}"
-          - "Cluster Name:    {{ cluster_name }}"
-          - "Kubeconfig:      {{ kubeconfig_path }}"
-          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+#   tasks:
+#     - name: Display Morpheus Integration Information
+#       ansible.builtin.debug:
+#         msg:
+#           - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+#           - "  MORPHEUS CLUSTER REGISTRATION"
+#           - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+#           - "Morpheus URL:    {{ morpheus_url }}"
+#           - "Cluster Name:    {{ cluster_name }}"
+#           - "Kubeconfig:      {{ kubeconfig_path }}"
+#           - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-    - name: Check if kubeconfig exists
-      ansible.builtin.stat:
-        path: "{{ kubeconfig_path }}"
-      register: kubeconfig_stat
+#     - name: Check if kubeconfig exists
+#       ansible.builtin.stat:
+#         path: "{{ kubeconfig_path }}"
+#       register: kubeconfig_stat
 
-    - name: Fail if kubeconfig not found
-      ansible.builtin.fail:
-        msg: "Kubeconfig not found at {{ kubeconfig_path }}"
-      when: not kubeconfig_stat.stat.exists
+#     - name: Fail if kubeconfig not found
+#       ansible.builtin.fail:
+#         msg: "Kubeconfig not found at {{ kubeconfig_path }}"
+#       when: not kubeconfig_stat.stat.exists
 
-    - name: Verify cluster is accessible
-      ansible.builtin.command: >
-        kubectl --kubeconfig={{ kubeconfig_path }} get nodes
-      register: cluster_check
-      changed_when: false
-      retries: 10
-      delay: 30
-      until: cluster_check.rc == 0
+#     - name: Verify cluster is accessible
+#       ansible.builtin.command: >
+#         kubectl --kubeconfig={{ kubeconfig_path }} get nodes
+#       register: cluster_check
+#       changed_when: false
+#       retries: 10
+#       delay: 30
+#       until: cluster_check.rc == 0
 
-    - name: Create Service Account for Morpheus
-      ansible.builtin.shell: |
-        kubectl --kubeconfig={{ kubeconfig_path }} apply -f - <<EOF
-        apiVersion: v1
-        kind: ServiceAccount
-        metadata:
-          name: morpheus-admin
-          namespace: kube-system
-        EOF
-      register: sa_result
-      changed_when: "'created' in sa_result.stdout or 'configured' in sa_result.stdout"
+#     - name: Create Service Account for Morpheus
+#       ansible.builtin.shell: |
+#         kubectl --kubeconfig={{ kubeconfig_path }} apply -f - <<EOF
+#         apiVersion: v1
+#         kind: ServiceAccount
+#         metadata:
+#           name: morpheus-admin
+#           namespace: kube-system
+#         EOF
+#       register: sa_result
+#       changed_when: "'created' in sa_result.stdout or 'configured' in sa_result.stdout"
 
-    - name: Grant cluster-admin permissions
-      ansible.builtin.shell: |
-        kubectl --kubeconfig={{ kubeconfig_path }} apply -f - <<EOF
-        apiVersion: rbac.authorization.k8s.io/v1
-        kind: ClusterRoleBinding
-        metadata:
-          name: morpheus-admin-binding
-        subjects:
-          - kind: ServiceAccount
-            name: morpheus-admin
-            namespace: kube-system
-        roleRef:
-          kind: ClusterRole
-          name: cluster-admin
-          apiGroup: rbac.authorization.k8s.io
-        EOF
-      register: crb_result
-      changed_when: "'created' in crb_result.stdout or 'configured' in crb_result.stdout"
+#     - name: Grant cluster-admin permissions
+#       ansible.builtin.shell: |
+#         kubectl --kubeconfig={{ kubeconfig_path }} apply -f - <<EOF
+#         apiVersion: rbac.authorization.k8s.io/v1
+#         kind: ClusterRoleBinding
+#         metadata:
+#           name: morpheus-admin-binding
+#         subjects:
+#           - kind: ServiceAccount
+#             name: morpheus-admin
+#             namespace: kube-system
+#         roleRef:
+#           kind: ClusterRole
+#           name: cluster-admin
+#           apiGroup: rbac.authorization.k8s.io
+#         EOF
+#       register: crb_result
+#       changed_when: "'created' in crb_result.stdout or 'configured' in crb_result.stdout"
 
-    - name: Create long-lived API token secret
-      ansible.builtin.shell: |
-        kubectl --kubeconfig={{ kubeconfig_path }} apply -f - <<EOF
-        apiVersion: v1
-        kind: Secret
-        metadata:
-          name: morpheus-admin-token
-          namespace: kube-system
-          annotations:
-            kubernetes.io/service-account.name: morpheus-admin
-        type: kubernetes.io/service-account-token
-        EOF
-      register: secret_result
-      changed_when: "'created' in secret_result.stdout or 'configured' in secret_result.stdout"
+#     - name: Create long-lived API token secret
+#       ansible.builtin.shell: |
+#         kubectl --kubeconfig={{ kubeconfig_path }} apply -f - <<EOF
+#         apiVersion: v1
+#         kind: Secret
+#         metadata:
+#           name: morpheus-admin-token
+#           namespace: kube-system
+#           annotations:
+#             kubernetes.io/service-account.name: morpheus-admin
+#         type: kubernetes.io/service-account-token
+#         EOF
+#       register: secret_result
+#       changed_when: "'created' in secret_result.stdout or 'configured' in secret_result.stdout"
 
-    - name: Wait for token to be generated
-      ansible.builtin.pause:
-        seconds: 15
-        prompt: "Waiting for Kubernetes to generate service account token..."
+#     - name: Wait for token to be generated
+#       ansible.builtin.pause:
+#         seconds: 15
+#         prompt: "Waiting for Kubernetes to generate service account token..."
 
-    - name: Retrieve token from cluster
-      ansible.builtin.shell: |
-        kubectl --kubeconfig={{ kubeconfig_path }} get secret morpheus-admin-token \
-          -n kube-system -o jsonpath='{.data.token}'
-      register: token_b64
-      changed_when: false
-      retries: 10
-      delay: 5
-      until: token_b64.stdout | length > 0
+#     - name: Retrieve token from cluster
+#       ansible.builtin.shell: |
+#         kubectl --kubeconfig={{ kubeconfig_path }} get secret morpheus-admin-token \
+#           -n kube-system -o jsonpath='{.data.token}'
+#       register: token_b64
+#       changed_when: false
+#       retries: 10
+#       delay: 5
+#       until: token_b64.stdout | length > 0
 
-    - name: Decode service account token
-      ansible.builtin.set_fact:
-        morpheus_sa_token: "{{ token_b64.stdout | b64decode }}"
+#     - name: Decode service account token
+#       ansible.builtin.set_fact:
+#         morpheus_sa_token: "{{ token_b64.stdout | b64decode }}"
 
-    - name: Get CA certificate
-      ansible.builtin.shell: |
-        kubectl --kubeconfig={{ kubeconfig_path }} get secret morpheus-admin-token \
-          -n kube-system -o jsonpath='{.data.ca\.crt}'
-      register: ca_cert_b64
-      changed_when: false
+#     - name: Get CA certificate
+#       ansible.builtin.shell: |
+#         kubectl --kubeconfig={{ kubeconfig_path }} get secret morpheus-admin-token \
+#           -n kube-system -o jsonpath='{.data.ca\.crt}'
+#       register: ca_cert_b64
+#       changed_when: false
 
-    - name: Decode CA certificate
-      ansible.builtin.set_fact:
-        cluster_ca_cert: "{{ ca_cert_b64.stdout | b64decode }}"
+#     - name: Decode CA certificate
+#       ansible.builtin.set_fact:
+#         cluster_ca_cert: "{{ ca_cert_b64.stdout | b64decode }}"
 
-    - name: Verify token works
-      ansible.builtin.shell: |
-        kubectl --kubeconfig={{ kubeconfig_path }} --token="{{ morpheus_sa_token }}" get nodes
-      register: token_verify
-      changed_when: false
+#     - name: Verify token works
+#       ansible.builtin.shell: |
+#         kubectl --kubeconfig={{ kubeconfig_path }} --token="{{ morpheus_sa_token }}" get nodes
+#       register: token_verify
+#       changed_when: false
 
-    - name: Get Kubernetes API server endpoint
-      ansible.builtin.shell: |
-        kubectl --kubeconfig={{ kubeconfig_path }} config view --minify -o jsonpath='{.clusters[0].cluster.server}'
-      register: api_server_url
-      changed_when: false
+#     - name: Get Kubernetes API server endpoint
+#       ansible.builtin.shell: |
+#         kubectl --kubeconfig={{ kubeconfig_path }} config view --minify -o jsonpath='{.clusters[0].cluster.server}'
+#       register: api_server_url
+#       changed_when: false
 
-    - name: Display cluster information
-      ansible.builtin.debug:
-        msg:
-          - "Cluster API Server: {{ api_server_url.stdout }}"
-          - "Service Account: morpheus-admin"
-          - "Token generated successfully ({{ morpheus_sa_token | length }} chars)"
-    - name: Read kubeconfig file from control plane
-      ansible.builtin.command: "cat /etc/kubernetes/admin.conf"
-      register: kube_config_file
-      changed_when: false
+#     - name: Display cluster information
+#       ansible.builtin.debug:
+#         msg:
+#           - "Cluster API Server: {{ api_server_url.stdout }}"
+#           - "Service Account: morpheus-admin"
+#           - "Token generated successfully ({{ morpheus_sa_token | length }} chars)"
+#     - name: Read kubeconfig file from control plane
+#       ansible.builtin.command: "cat /etc/kubernetes/admin.conf"
+#       register: kube_config_file
+#       changed_when: false
       
-    - name: Set Morpheus and Kubernetes facts
-      ansible.builtin.set_fact:
-        kubeconfig: "{{ kube_config_file.stdout | regex_replace('\n', '')  }}"
+#     - name: Set Morpheus and Kubernetes facts
+#       ansible.builtin.set_fact:
+#         kubeconfig: "{{ kube_config_file.stdout | regex_replace('\n', '')  }}"
         
-    - name: Check if Cluster already exists
-      ansible.builtin.uri:
-        url: "{{ morpheus_url }}/api/clusters?name=sample-cluster-manually"
-        method: GET
-        headers:
-          Authorization: "Bearer {{ morpheus_api_token }}"
-        validate_certs: false
-      register: existing_clusters
+#     - name: Check if Cluster already exists
+#       ansible.builtin.uri:
+#         url: "{{ morpheus_url }}/api/clusters?name=sample-cluster-manually"
+#         method: GET
+#         headers:
+#           Authorization: "Bearer {{ morpheus_api_token }}"
+#         validate_certs: false
+#       register: existing_clusters
 
-    - name: debug the cluster name
-      debug:
-        var: existing_clusters
+#     - name: debug the cluster name
+#       debug:
+#         var: existing_clusters
         
-    - name: Register External Cluster
-      ansible.builtin.uri:
-        url: "{{ morpheus_url }}/api/clusters"
-        method: POST
-        headers:
-          Authorization: "BEARER {{ morpheus_api_token }}"
-          Content-Type: "application/json"
-        body_format: json
-        body:
-          cluster:
-            name: "sample-cluster-manually"
-            type: "external-kubernetes-cluster" # Prevents SSH check
-            group: { id: 1 }
-            layout: { id: 159 }
-            cloud: { id: 1 }
-            sshKeyPair: { id: 72 }
-            #zone: { id: 1 }
-            server: # This block is REQUIRED to fix the sshKeyPair error
-              name: "sample-cluster-manually"
-              plan: 
-                code: "external-default" 
-                options: {}
-              visibility: "private"
-              networkDomain: null
-              config:
-                apiUrl: "https://44.223.72.12:6443"
-                apiToken: "{{ morpheus_sa_token }}"
-                serviceAccess: "{{ kubeconfig }}"
-        validate_certs: false
-        status_code: [200, 201]
-      when: existing_clusters.json.meta.total == 0
-      register: morpheus_response
+#     - name: Register External Cluster
+#       ansible.builtin.uri:
+#         url: "{{ morpheus_url }}/api/clusters"
+#         method: POST
+#         headers:
+#           Authorization: "BEARER {{ morpheus_api_token }}"
+#           Content-Type: "application/json"
+#         body_format: json
+#         body:
+#           cluster:
+#             name: "sample-cluster-manually"
+#             type: "external-kubernetes-cluster" # Prevents SSH check
+#             group: { id: 1 }
+#             layout: { id: 159 }
+#             cloud: { id: 1 }
+#             sshKeyPair: { id: 72 }
+#             #zone: { id: 1 }
+#             server: # This block is REQUIRED to fix the sshKeyPair error
+#               name: "sample-cluster-manually"
+#               plan: 
+#                 code: "external-default" 
+#                 options: {}
+#               visibility: "private"
+#               networkDomain: null
+#               config:
+#                 apiUrl: "https://44.223.72.12:6443"
+#                 apiToken: "{{ morpheus_sa_token }}"
+#                 serviceAccess: "{{ kubeconfig }}"
+#         validate_certs: false
+#         status_code: [200, 201]
+#       when: existing_clusters.json.meta.total == 0
+#       register: morpheus_response
 
-    - name: Display Morpheus registration result
-      ansible.builtin.debug:
-        msg:
-          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          - "  ✅ CLUSTER REGISTERED WITH MORPHEUS"
-          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          - "Cluster ID: {{ morpheus_response.json.cluster.id | default('N/A') }}"
-          - "Cluster Name: {{ cluster_name }}"
-          - "Status: {{ morpheus_response.json.cluster.status | default('Registered') }}"
-          - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      when: morpheus_response is succeeded
+#     - name: Display Morpheus registration result
+#       ansible.builtin.debug:
+#         msg:
+#           - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+#           - "  ✅ CLUSTER REGISTERED WITH MORPHEUS"
+#           - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+#           - "Cluster ID: {{ morpheus_response.json.cluster.id | default('N/A') }}"
+#           - "Cluster Name: {{ cluster_name }}"
+#           - "Status: {{ morpheus_response.json.cluster.status | default('Registered') }}"
+#           - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+#       when: morpheus_response is succeeded
 
-    - name: Save cluster credentials to file
-      ansible.builtin.copy:
-        content: |
-          # Morpheus Cluster Registration Details
-          # Generated: {{ ansible_date_time.iso8601 }}
+#     - name: Save cluster credentials to file
+#       ansible.builtin.copy:
+#         content: |
+#           # Morpheus Cluster Registration Details
+#           # Generated: {{ ansible_date_time.iso8601 }}
           
-          Cluster Name: {{ cluster_name }}
-          Morpheus URL: {{ morpheus_url }}
-          Cluster ID: {{ morpheus_response.json.cluster.id | default('N/A') }}
+#           Cluster Name: {{ cluster_name }}
+#           Morpheus URL: {{ morpheus_url }}
+#           Cluster ID: {{ morpheus_response.json.cluster.id | default('N/A') }}
           
-          API Server: {{ api_server_url.stdout }}
-          Service Account: morpheus-admin
-          Namespace: kube-system
+#           API Server: {{ api_server_url.stdout }}
+#           Service Account: morpheus-admin
+#           Namespace: kube-system
           
-          # To manually verify:
-          kubectl --token="{{ morpheus_sa_token }}" --server={{ api_server_url.stdout }} --insecure-skip-tls-verify get nodes
-        dest: "/tmp/morpheus-cluster-{{ cluster_name }}.txt"
-        mode: '0600'
-      when: morpheus_response is succeeded
+#           # To manually verify:
+#           kubectl --token="{{ morpheus_sa_token }}" --server={{ api_server_url.stdout }} --insecure-skip-tls-verify get nodes
+#         dest: "/tmp/morpheus-cluster-{{ cluster_name }}.txt"
+#         mode: '0600'
+#       when: morpheus_response is succeeded
 
-    - name: Display credentials file location
-      ansible.builtin.debug:
-        msg: "Credentials saved to: /tmp/morpheus-cluster-{{ cluster_name }}.txt"
-      when: morpheus_response is succeeded
+#     - name: Display credentials file location
+#       ansible.builtin.debug:
+#         msg: "Credentials saved to: /tmp/morpheus-cluster-{{ cluster_name }}.txt"
+#       when: morpheus_response is succeeded
